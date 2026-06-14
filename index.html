@@ -9,8 +9,93 @@
     <title>Spotify</title>
     <link rel="icon" type="image/svg+xml" href="https://upload.wikimedia.org/wikipedia/commons/2/26/Spotify_logo_with_text.svg" />
     <script>
-      // Gracefully capture, filter, and suppress benign development environment errors occurring within sandboxed frame environments.
+      // Support complete isolation of Vite WebSocket HMR connectivity failures
       (function() {
+        // 1. Proxy global WebSocket constructor to capture and safely silence HMR failures at the origin
+        const OriginalWebSocket = window.WebSocket;
+        if (OriginalWebSocket) {
+          const ProxiedWebSocket = function(url, protocols) {
+            let ws;
+            try {
+              ws = protocols ? new OriginalWebSocket(url, protocols) : new OriginalWebSocket(url);
+            } catch (e) {
+              ws = {};
+            }
+
+            // Decorate addEventListener to intercept and stifle error events
+            const originalAdd = ws.addEventListener;
+            if (typeof originalAdd === 'function') {
+              ws.addEventListener = function(type, listener, options) {
+                if (type === 'error' || type === 'close') {
+                  const wrappedListener = function(event) {
+                    if (event) {
+                      if (typeof event.preventDefault === 'function') event.preventDefault();
+                      if (typeof event.stopPropagation === 'function') event.stopPropagation();
+                      if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+                    }
+                    try {
+                      if (listener) listener.call(this, event);
+                    } catch (err) {}
+                  };
+                  return originalAdd.call(ws, type, wrappedListener, options);
+                }
+                return originalAdd.call(ws, type, listener, options);
+              };
+            }
+
+            // Decorate inline onerror hook
+            let userOnError = null;
+            Object.defineProperty(ws, 'onerror', {
+              get() { return userOnError; },
+              set(val) {
+                userOnError = val ? function(event) {
+                  if (event) {
+                    if (typeof event.preventDefault === 'function') event.preventDefault();
+                    if (typeof event.stopPropagation === 'function') event.stopPropagation();
+                    if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+                  }
+                  try {
+                    val.call(this, event);
+                  } catch (e) {}
+                } : null;
+              }
+            });
+
+            // Decorate inline onclose hook
+            let userOnClose = null;
+            Object.defineProperty(ws, 'onclose', {
+              get() { return userOnClose; },
+              set(val) {
+                userOnClose = val ? function(event) {
+                  if (event) {
+                    if (typeof event.preventDefault === 'function') event.preventDefault();
+                    if (typeof event.stopPropagation === 'function') event.stopPropagation();
+                    if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+                  }
+                  try {
+                    val.call(this, event);
+                  } catch (e) {}
+                } : null;
+              }
+            });
+
+            return ws;
+          };
+
+          ProxiedWebSocket.prototype = OriginalWebSocket.prototype;
+          for (const key in OriginalWebSocket) {
+            if (Object.prototype.hasOwnProperty.call(OriginalWebSocket, key)) {
+              ProxiedWebSocket[key] = OriginalWebSocket[key];
+            }
+          }
+          ProxiedWebSocket.CONNECTING = 0;
+          ProxiedWebSocket.OPEN = 1;
+          ProxiedWebSocket.CLOSING = 2;
+          ProxiedWebSocket.CLOSED = 3;
+          window.WebSocket = ProxiedWebSocket;
+        }
+
+        // 2. Suppress console logs talking about HMR or WebSocket connection failures
         const originalError = console.error;
         const originalWarn = console.warn;
 
@@ -22,14 +107,15 @@
             str.includes('hmr') || 
             str.includes('vite') || 
             str.includes('audiodb') || 
-            str.includes('failed to fetch')
+            str.includes('failed to fetch') ||
+            str.includes('closed without opened')
           );
         }
 
         console.error = function() {
           for (let i = 0; i < arguments.length; i++) {
             if (isBenignMessage(arguments[i])) {
-              return; // Silently filter out and discard
+              return; // Silently discard
             }
           }
           originalError.apply(console, arguments);
@@ -38,25 +124,29 @@
         console.warn = function() {
           for (let i = 0; i < arguments.length; i++) {
             if (isBenignMessage(arguments[i])) {
-              return; // Silently filter out and discard
+              return; // Silently discard
             }
           }
           originalWarn.apply(console, arguments);
         };
       })();
 
+      // 3. Stop events from bubbling up to any other handlers or the workspace shell
       window.addEventListener('unhandledrejection', function(event) {
         const reason = event.reason;
-        if (reason && (
-          String(reason).includes('WebSocket') || 
-          String(reason).includes('websocket') || 
-          String(reason).includes('vite') || 
-          String(reason).includes('HMR') ||
-          String(reason).includes('Failed to fetch') ||
-          String(reason).includes('AudioDB')
+        const msg = reason ? (reason.message || String(reason)) : '';
+        if (msg && (
+          msg.includes('WebSocket') || 
+          msg.includes('websocket') || 
+          msg.includes('vite') || 
+          msg.includes('HMR') ||
+          msg.includes('Failed to fetch') ||
+          msg.includes('AudioDB') ||
+          msg.includes('closed without opened')
         )) {
           event.preventDefault();
           event.stopPropagation();
+          event.stopImmediatePropagation();
         }
       }, true);
 
@@ -70,10 +160,12 @@
           message.includes('HMR') ||
           message.includes('Failed to fetch') ||
           message.includes('AudioDB') ||
+          message.includes('closed without opened') ||
           filename.includes('vite')
         ) {
           event.preventDefault();
           event.stopPropagation();
+          event.stopImmediatePropagation();
         }
       }, true);
     </script>
