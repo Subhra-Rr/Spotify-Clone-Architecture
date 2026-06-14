@@ -1,0 +1,144 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the Spotify clone app.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "description": "The user's email address."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "The user's profile picture URL."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the user account was created."
+        }
+      },
+      "required": ["email", "createdAt"]
+    },
+    "Playlist": {
+      "title": "Playlist",
+      "description": "A customized playlist created by the user.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the playlist."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional description of the playlist."
+        },
+        "coverUrl": {
+          "type": "string",
+          "description": "Optional cover image URL."
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "The ID of the user who owns this playlist."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last updated timestamp."
+        }
+      },
+      "required": ["name", "ownerId", "createdAt", "updatedAt"]
+    },
+    "PlaylistTrack": {
+      "title": "PlaylistTrack",
+      "description": "A track inside a user's playlist.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "artist": {
+          "type": "string"
+        },
+        "album": {
+          "type": "string"
+        },
+        "coverUrl": {
+          "type": "string"
+        },
+        "audioUrl": {
+          "type": "string"
+        },
+        "durationMs": {
+          "type": "number"
+        },
+        "addedAt": {
+          "type": "string"
+        }
+      },
+      "required": ["title", "artist", "addedAt"]
+    },
+    "LikedSong": {
+      "title": "LikedSong",
+      "description": "A song that a user has liked.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "artist": {
+          "type": "string"
+        },
+        "album": {
+          "type": "string"
+        },
+        "coverUrl": {
+          "type": "string"
+        },
+        "audioUrl": {
+          "type": "string"
+        },
+        "durationMs": {
+          "type": "number"
+        },
+        "likedAt": {
+          "type": "string"
+        }
+      },
+      "required": ["title", "artist", "likedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "User profile data."
+    },
+    "/playlists/{playlistId}": {
+      "schema": {
+        "$ref": "#/entities/Playlist"
+      },
+      "description": "User-created playlists."
+    },
+    "/playlists/{playlistId}/tracks/{trackId}": {
+      "schema": {
+        "$ref": "#/entities/PlaylistTrack"
+      },
+      "description": "Tracks belonging to a specific playlist."
+    },
+    "/users/{userId}/likedSongs/{trackId}": {
+      "schema": {
+        "$ref": "#/entities/LikedSong"
+      },
+      "description": "Songs liked by the user."
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "Spotify Clone Architecture",
+  "description": "Architecture plan and roadmap for a full-stack MERN Spotify clone.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
