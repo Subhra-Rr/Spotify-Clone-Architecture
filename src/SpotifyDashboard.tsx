@@ -379,6 +379,7 @@ export default function SpotifyDashboard() {
   };
 
   const stateRef = useRef({ currentTrackIndex, isPlaying, queue, repeatMode, isShuffled });
+  const consecutiveErrorsRef = useRef(0);
   
   useEffect(() => {
     stateRef.current = { currentTrackIndex, isPlaying, queue, repeatMode, isShuffled };
@@ -1222,7 +1223,7 @@ export default function SpotifyDashboard() {
 
   const handleAddPlaylist = async () => {
     if (!firebaseUser) {
-        alert('Please log in to create playlists');
+        showToast('Please log in to create playlists', 'info');
         return;
     }
     const targetId = Math.random().toString(36).substr(2, 9);
@@ -1593,7 +1594,7 @@ export default function SpotifyDashboard() {
              <PremiumPage 
                 onBuy={() => {
                    setIsPremium(true);
-                   alert('Welcome to Spotify Premium! Enjoy ad-free listening.');
+                   showToast('Welcome to Spotify Premium! Enjoy ad-free listening.', 'success');
                    navigateTo('home');
                 }} 
              />
@@ -2553,8 +2554,9 @@ export default function SpotifyDashboard() {
                            if (window.confirm("are you sure to delete your account? This action cannot be undone.")) {
                               try {
                                  await firebaseUser?.delete();
+                                 showToast("Your account was successfully deleted.", "success");
                               } catch (e: any) {
-                                 alert("Error deleting account: " + e.message + " You may need to sign in again to perform this sensitive action.");
+                                 showToast("Error deleting account: " + e.message, "error");
                               }
                            }
                         }}
@@ -3127,6 +3129,9 @@ export default function SpotifyDashboard() {
          ref={audioRef}
          onTimeUpdate={() => setProgress(audioRef.current?.currentTime || 0)}
          onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
+         onPlay={() => {
+            consecutiveErrorsRef.current = 0;
+         }}
          onEnded={() => handleNext(true)}
          onVolumeChange={() => setVolume(audioRef.current?.volume || 1)}
          onError={(e) => {
@@ -3135,13 +3140,23 @@ export default function SpotifyDashboard() {
             const currentIndex = stateRef.current.currentTrackIndex;
             const currentTrack = currentTracks[currentIndex];
             if (currentTrack) {
-               showToast(`Unable to play "${currentTrack.title}". Trying next track...`, "error");
-               if (audioRef.current) {
-                  audioRef.current.pause();
+               consecutiveErrorsRef.current += 1;
+               if (consecutiveErrorsRef.current >= 3) {
+                  showToast("Playback paused. Multiple tracks failed to load.", "error");
+                  consecutiveErrorsRef.current = 0;
+                  setIsPlaying(false);
+                  if (audioRef.current) {
+                     audioRef.current.pause();
+                  }
+               } else {
+                  showToast(`Unable to play "${currentTrack.title}". Trying next track...`, "error");
+                  if (audioRef.current) {
+                     audioRef.current.pause();
+                  }
+                  setTimeout(() => {
+                     handleNext(true);
+                  }, 2000);
                }
-               setTimeout(() => {
-                  handleNext(true);
-               }, 2000);
             }
          }}
       />
@@ -3276,9 +3291,10 @@ export default function SpotifyDashboard() {
                     
                     setSupportSubmitted(true);
                     setSupportMessage('');
+                    showToast("Support ticket submitted successfully!", "success");
                   } catch (err: any) {
                     console.error("Support submission failed:", err);
-                    alert("Failed to submit support request: " + err.message);
+                    showToast("Failed to submit support request: " + err.message, "error");
                   } finally {
                     setIsSubmittingSupport(false);
                   }
@@ -3455,7 +3471,7 @@ export default function SpotifyDashboard() {
                     onClick={() => {
                       setSearchHistory([]);
                       localStorage.removeItem('spotify-clone-search-history');
-                      alert("Search history cleared!");
+                      showToast("Search history cleared!", "success");
                     }}
                     className="px-4 py-2 rounded-full border border-red-500/50 hover:border-red-500 text-red-400 hover:text-white text-xs font-bold hover:scale-105 active:scale-95 transition-all"
                   >
