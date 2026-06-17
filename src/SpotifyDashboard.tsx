@@ -201,6 +201,29 @@ export default function SpotifyDashboard() {
   const [isProgressHovered, setIsProgressHovered] = useState(false);
   const [isVolumeHovered, setIsVolumeHovered] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isPrivateSession, setIsPrivateSession] = useState(false);
+  const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [supportMessage, setSupportMessage] = useState('');
+  const [supportEmail, setSupportEmail] = useState('');
+  const [supportSubject, setSupportSubject] = useState('General Feedback');
+  const [supportSubmitted, setSupportSubmitted] = useState(false);
+  const [isSubmittingSupport, setIsSubmittingSupport] = useState(false);
+  const [toastNotification, setToastNotification] = useState<{ message: string; type: 'info' | 'error' | 'success' } | null>(null);
+
+  const showToast = (message: string, type: 'info' | 'error' | 'success' = 'info') => {
+    setToastNotification({ message, type });
+    setTimeout(() => {
+      setToastNotification(prev => prev?.message === message ? null : prev);
+    }, 4000);
+  };
+
+  const [audioQuality, setAudioQuality] = useState(localStorage.getItem('audio_quality') || 'high');
+  const [crossfade, setCrossfade] = useState(Number(localStorage.getItem('crossfade') || '6'));
+  const [autoplay, setAutoplay] = useState(localStorage.getItem('autoplay') === 'true');
+
+  const profileMenuRef = useRef<HTMLDivElement>(null);
   const [isShuffled, setIsShuffled] = useState(false);
   const [repeatMode, setRepeatMode] = useState<'off' | 'all' | 'one'>('off');
   const [isMobilePlayerOpen, setIsMobilePlayerOpen] = useState(false);
@@ -369,6 +392,18 @@ export default function SpotifyDashboard() {
         document.removeEventListener('click', closeMenu);
         document.removeEventListener('scroll', closeMenu, true);
      };
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   useEffect(() => {
@@ -675,7 +710,7 @@ export default function SpotifyDashboard() {
     } else {
        try {
          await navigator.clipboard.writeText(url);
-         alert("Link copied to clipboard!");
+         showToast("Link copied to clipboard!", "success");
        } catch (e) {}
     }
   };
@@ -739,7 +774,7 @@ export default function SpotifyDashboard() {
 
   const addToPlaylist = async (track: Track) => {
     if (!firebaseUser) {
-        alert("Please log in to use custom playlists");
+        showToast("Please log in to use custom playlists", "info");
         return;
     }
     setPlaylistSelectTrack(track);
@@ -764,7 +799,7 @@ export default function SpotifyDashboard() {
              localStorage.setItem('spotify-clone-guest-playlists', JSON.stringify(updated.filter(p => p.id !== 'liked')));
              return updated;
           });
-          requestAnimationFrame(() => alert(`Created playlist "${playlistName}" & added "${track.title}"`));
+          showToast(`Created playlist "${playlistName}" & added "${track.title}"`, "success");
           setPlaylistSelectTrack(null);
           return;
        }
@@ -794,7 +829,7 @@ export default function SpotifyDashboard() {
           localStorage.setItem('spotify-clone-guest-playlists', JSON.stringify(updated.filter(p => p.id !== 'liked')));
           return updated;
        });
-       requestAnimationFrame(() => alert(`Added "${track.title}" to ${targetPlaylistInfo.name}`));
+       showToast(`Added "${track.title}" to ${targetPlaylistInfo.name}`, "success");
        setPlaylistSelectTrack(null);
        return;
     }
@@ -817,7 +852,7 @@ export default function SpotifyDashboard() {
                coverUrl: track.coverUrl,
                tracks: [track]
            });
-           requestAnimationFrame(() => alert(`Created playlist "${playlistName}" & added "${track.title}"`));
+           showToast(`Created playlist "${playlistName}" & added "${track.title}"`, "success");
        } catch (err) {
            console.error("Failed to create playlist in Firestore", err);
            handleFirestoreError(err, OperationType.CREATE, `users/${firebaseUser.uid}/playlists/${newId}`);
@@ -842,7 +877,7 @@ export default function SpotifyDashboard() {
             tracks: trackDataList
         }, { merge: true });
         
-        requestAnimationFrame(() => alert(`Added "${track.title}" to ${targetPlaylistInfo.name}`));
+        showToast(`Added "${track.title}" to ${targetPlaylistInfo.name}`, "success");
 
         setPlaylists(prev => prev.map(p => {
             if (p.id === playlistId) {
@@ -1475,7 +1510,7 @@ export default function SpotifyDashboard() {
                    </div>
                  )}
              </div>
-             <div className="flex items-center gap-2 relative">
+             <div className="flex items-center gap-2 relative" ref={profileMenuRef}>
                 {!isPremium && (
                    <button 
                      onClick={() => navigateTo('premium')} 
@@ -1486,8 +1521,7 @@ export default function SpotifyDashboard() {
                  )}
                 <button 
                   onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                  onBlur={() => setTimeout(() => setIsProfileMenuOpen(false), 200)}
-                  className="bg-black/60 rounded-full p-1 text-[#b3b3b3] hover:text-white hover:scale-105 transition-all"
+                  className="bg-black/60 rounded-full p-1 text-[#b3b3b3] hover:text-white hover:scale-105 transition-all relative flex items-center justify-center animate-fade-in"
                 >
                     {getProfileImage(firebaseUser) ? (
                       <img src={getProfileImage(firebaseUser)!} alt="Profile" className="w-8 h-8 rounded-full" />
@@ -1499,8 +1533,8 @@ export default function SpotifyDashboard() {
                   <div className="absolute right-0 top-11 w-[224px] bg-[#282828] rounded-md shadow-[0_16px_24px_rgba(0,0,0,0.3),_0_6px_8px_rgba(0,0,0,0.2)] py-1 z-50">
                     <ul className="flex flex-col text-[14px] font-medium text-[#eaeaea]">
                       <li>
-                        <button onClick={() => window.open('https://www.spotify.com/account/', '_blank')} className="w-full text-left px-4 py-3 hover:bg-[#3e3e3e] flex items-center justify-between transition-colors">
-                          Account <ExternalLink className="w-4 h-4 text-[#b3b3b3]" />
+                        <button onClick={() => { setIsProfileMenuOpen(false); setIsAccountModalOpen(true); }} className="w-full text-left px-4 py-3 hover:bg-[#3e3e3e] flex items-center justify-between transition-colors">
+                          Account <UserCircle2 className="w-4 h-4 text-[#b3b3b3]" />
                         </button>
                       </li>
                       <li>
@@ -1519,17 +1553,20 @@ export default function SpotifyDashboard() {
                         </button>
                       </li>
                       <li>
-                        <button onClick={() => window.open('https://support.spotify.com/', '_blank')} className="w-full text-left px-4 py-3 hover:bg-[#3e3e3e] flex items-center justify-between transition-colors">
+                        <button onClick={() => { setIsProfileMenuOpen(false); setIsSupportModalOpen(true); }} className="w-full text-left px-4 py-3 hover:bg-[#3e3e3e] flex items-center justify-between transition-colors">
                           Support <ExternalLink className="w-4 h-4 text-[#b3b3b3]" />
                         </button>
                       </li>
                       <li>
-                        <button onClick={() => { setIsProfileMenuOpen(false); alert("Private session enabled."); }} className="w-full text-left px-4 py-3 hover:bg-[#3e3e3e] transition-colors">
-                          Private session
+                        <button onClick={() => { setIsProfileMenuOpen(false); setIsPrivateSession(!isPrivateSession); }} className="w-full text-left px-4 py-3 hover:bg-[#3e3e3e] flex items-center justify-between transition-colors">
+                          <span>Private session</span>
+                          <span className={`text-[10px] px-2 py-[1px] rounded-full font-bold ${isPrivateSession ? 'bg-[#509bf5] text-white animate-pulse' : 'bg-neutral-700 text-gray-300'}`}>
+                            {isPrivateSession ? 'ON' : 'OFF'}
+                          </span>
                         </button>
                       </li>
                       <li>
-                        <button onClick={() => { setIsProfileMenuOpen(false); alert("Settings coming soon!"); }} className="w-full text-left px-4 py-3 hover:bg-[#3e3e3e] transition-colors">
+                        <button onClick={() => { setIsProfileMenuOpen(false); setIsSettingsModalOpen(true); }} className="w-full text-left px-4 py-3 hover:bg-[#3e3e3e] transition-colors">
                           Settings
                         </button>
                       </li>
@@ -3072,12 +3109,41 @@ export default function SpotifyDashboard() {
          />
       </div>
 
+       {/* Beautiful Spotify-style Toast Notification Banner */}
+       {toastNotification && (
+         <div id="spotify-custom-toast" className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[300] flex items-center gap-3 bg-[#282828] text-white px-5 py-3 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.5)] border border-[#ffffff1a] animate-fade-in pointer-events-none transition-all duration-300">
+           {toastNotification.type === 'error' ? (
+             <div className="w-5 h-5 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center font-bold text-[12px]">!</div>
+           ) : toastNotification.type === 'success' ? (
+             <BadgeCheck className="w-5 h-5 text-[#1ed760]" />
+           ) : (
+             <div className="w-5 h-5 rounded-full bg-[#509bf5]/20 text-[#509bf5] flex items-center justify-center font-bold text-[12px]">i</div>
+           )}
+           <span className="text-sm font-semibold select-none whitespace-nowrap">{toastNotification.message}</span>
+         </div>
+       )}
+
       <audio 
          ref={audioRef}
          onTimeUpdate={() => setProgress(audioRef.current?.currentTime || 0)}
          onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
          onEnded={() => handleNext(true)}
          onVolumeChange={() => setVolume(audioRef.current?.volume || 1)}
+         onError={(e) => {
+            console.error("Audio src stream failed to load/play:", audioRef.current?.src, e);
+            const currentTracks = stateRef.current.queue;
+            const currentIndex = stateRef.current.currentTrackIndex;
+            const currentTrack = currentTracks[currentIndex];
+            if (currentTrack) {
+               showToast(`Unable to play "${currentTrack.title}". Trying next track...`, "error");
+               if (audioRef.current) {
+                  audioRef.current.pause();
+               }
+               setTimeout(() => {
+                  handleNext(true);
+               }, 2000);
+            }
+         }}
       />
 
       <ProfilePhotoEditModal 
@@ -3093,6 +3159,322 @@ export default function SpotifyDashboard() {
              }
          }} 
       />
+
+       {/* Custom Account Overview Modal */}
+       {isAccountModalOpen && (
+         <div id="account-info-modal" className="fixed inset-0 bg-black/80 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
+           <div className="bg-[#181818] rounded-lg w-full max-w-lg p-6 border border-[#282828] shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative animate-fade-in text-white font-sans">
+              <button 
+                 id="close-account-modal-btn"
+                 onClick={() => setIsAccountModalOpen(false)}
+                 className="absolute top-4 right-4 text-[#b3b3b3] hover:text-white transition-colors"
+              >
+                 <X className="w-5 h-5" />
+              </button>
+              
+              <div className="flex items-center gap-4 mb-6 pb-4 border-b border-[#282828]">
+                <div className="w-16 h-16 rounded-full overflow-hidden bg-[#242424] flex items-center justify-center">
+                  {getProfileImage(firebaseUser) ? (
+                    <img src={getProfileImage(firebaseUser)!} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <UserCircle2 className="w-12 h-12 text-[#b3b3b3]" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white leading-tight">Account Overview</h3>
+                  <p className="text-xs text-[#b3b3b3] uppercase tracking-wider font-semibold mt-1">
+                    {isPremium ? "⭐ Spotify Premium User" : "Spotify Free User"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                   <span className="text-xs text-[#b3b3b3] block uppercase tracking-wider">Username / Display Name</span>
+                   <span className="text-[15px] font-semibold block mt-0.5">{firebaseUser?.displayName || "Spotify Listener"}</span>
+                </div>
+                <div>
+                   <span className="text-xs text-[#b3b3b3] block uppercase tracking-wider">Email Address</span>
+                   <span className="text-[15px] font-medium block mt-0.5">{firebaseUser?.email || "guest_user@example.com"}</span>
+                </div>
+                <div>
+                   <span className="text-xs text-[#b3b3b3] block uppercase tracking-wider">User ID (UID)</span>
+                   <span className="text-xs font-mono text-[#b3b3b3] block mt-1 bg-[#121212] p-2 rounded border border-[#282828] select-all">
+                     {firebaseUser?.uid || "N/A - Standalone Guest"}
+                   </span>
+                </div>
+                <div>
+                   <span className="text-xs text-[#b3b3b3] block uppercase tracking-wider">Account Creation Status</span>
+                   <span className="text-[13px] text-[#1ed760] font-medium block mt-0.5">🟢 Connected to Firestore Secure Storage</span>
+                </div>
+              </div>
+
+              <div className="flex gap-4 justify-end mt-8 pt-4 border-t border-[#282828]">
+                <button
+                  onClick={() => {
+                    setIsAccountModalOpen(false);
+                    navigateTo('profile');
+                  }}
+                  className="px-6 py-2.5 rounded-full border border-[#878787] text-white font-bold hover:scale-105 hover:border-white transition-all text-sm"
+                >
+                  Edit Profile
+                </button>
+                <button
+                  onClick={() => setIsAccountModalOpen(false)}
+                  className="px-6 py-2.5 rounded-full bg-[#1ed760] text-black font-bold hover:scale-105 transition-transform text-sm"
+                >
+                  Close Overview
+                </button>
+              </div>
+           </div>
+         </div>
+       )}
+
+       {/* Custom Help Desk Support Modal */}
+       {isSupportModalOpen && (
+         <div id="support-ticket-modal" className="fixed inset-0 bg-black/80 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
+           <div className="bg-[#181818] rounded-lg w-full max-w-lg p-6 border border-[#282828] shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative animate-fade-in text-white font-sans">
+              <button 
+                 id="close-support-modal-btn"
+                 onClick={() => {
+                   setIsSupportModalOpen(false);
+                   setSupportSubmitted(false);
+                   setSupportMessage('');
+                 }}
+                 className="absolute top-4 right-4 text-[#b3b3b3] hover:text-white transition-colors"
+              >
+                 <X className="w-5 h-5" />
+              </button>
+              
+              {!supportSubmitted ? (
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!supportMessage.trim()) return;
+                  
+                  setIsSubmittingSupport(true);
+                  try {
+                    const uEmail = firebaseUser?.email || 'guest@example.com';
+                    const uUid = firebaseUser?.uid || 'guest_user';
+                    
+                    if (firebaseUser && firebaseUser.uid !== 'guest_user') {
+                      await addDoc(collection(db, 'users', firebaseUser.uid, 'supportTickets'), {
+                        subject: supportSubject,
+                        message: supportMessage,
+                        email: supportEmail || uEmail,
+                        timestamp: serverTimestamp()
+                      });
+                    } else {
+                      const localTickets = JSON.parse(localStorage.getItem('spotify-clone-guest-support') || '[]');
+                      localTickets.push({
+                        subject: supportSubject,
+                        message: supportMessage,
+                        email: supportEmail || uEmail,
+                        timestamp: Date.now()
+                      });
+                      localStorage.setItem('spotify-clone-guest-support', JSON.stringify(localTickets));
+                    }
+                    
+                    setSupportSubmitted(true);
+                    setSupportMessage('');
+                  } catch (err: any) {
+                    console.error("Support submission failed:", err);
+                    alert("Failed to submit support request: " + err.message);
+                  } finally {
+                    setIsSubmittingSupport(false);
+                  }
+                }}>
+                  <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                    🎧 Spotify Customer Support
+                  </h3>
+                  <p className="text-[#b3b3b3] text-[13px] mb-4">
+                    Encountered an issue or have feature suggestions? Send us a ticket and our technical assistants will evaluate it.
+                  </p>
+                  
+                  <div className="space-y-4">
+                    <div className="flex flex-col gap-1.5 flex-1 p-0.5">
+                      <label className="text-xs font-bold text-[#b3b3b3] uppercase tracking-wider">Category</label>
+                      <select 
+                        value={supportSubject}
+                        onChange={(e) => setSupportSubject(e.target.value)}
+                        className="bg-[#242424] text-white px-3 py-2.5 rounded text-[14px] border border-transparent focus:border-white focus:outline-none transition-colors w-full"
+                      >
+                        <option value="General Feedback">💡 General Feedback / Suggestion</option>
+                        <option value="Playback Issue">🎵 Track Playback & Audio Issue</option>
+                        <option value="Account Settings">👤 Account Settings & Profile</option>
+                        <option value="Billing Premium">💳 Premium Subscription Support</option>
+                        <option value="Database Sync">🗄️ Firestore Database Sync Issue</option>
+                        <option value="Other">❓ General Inquiry / Other</option>
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 flex-1 p-0.5">
+                      <label className="text-xs font-bold text-[#b3b3b3] uppercase tracking-wider">Contact Email</label>
+                      <input
+                        type="email"
+                        required
+                        placeholder="you@example.com"
+                        value={supportEmail || firebaseUser?.email || ''}
+                        onChange={(e) => setSupportEmail(e.target.value)}
+                        className="bg-[#242424] text-white px-3 py-2.5 rounded text-[14px] border border-transparent focus:border-white focus:outline-none transition-colors w-full"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 flex-1 p-0.5">
+                      <label className="text-xs font-bold text-[#b3b3b3] uppercase tracking-wider">Describe your issue or suggestion</label>
+                      <textarea
+                        required
+                        rows={4}
+                        value={supportMessage}
+                        onChange={(e) => setSupportMessage(e.target.value)}
+                        placeholder="Please tell us what went wrong or how we can improve our Spotify experience..."
+                        className="bg-[#242424] text-[#fff] px-3 py-2.5 rounded text-[14px] border border-transparent focus:border-white focus:outline-none transition-colors resize-none w-full"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4 justify-end mt-6 pt-4 border-t border-[#282828]">
+                    <button
+                      type="button"
+                      onClick={() => setIsSupportModalOpen(false)}
+                      className="px-5 py-2 rounded-full border border-[#878787] text-white font-bold hover:scale-105 hover:border-white transition-all text-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmittingSupport}
+                      className="px-6 py-2 rounded-full bg-[#1ed760] text-black font-bold hover:scale-105 transition-transform text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                    >
+                      {isSubmittingSupport && <Loader2 className="w-4 h-4 animate-spin" />}
+                      Submit Request
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="text-center py-6">
+                  <div className="w-16 h-16 bg-[#1ed760]/10 text-[#1ed760] rounded-full flex items-center justify-center mx-auto mb-4 scale-up">
+                    <BadgeCheck className="w-10 h-10" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-2 animate-fade-in">Request Submitted Successfully</h3>
+                  <p className="text-[#b3b3b3] text-[14px] max-w-sm mx-auto mb-6">
+                    Thank you for reaching out! A help desk ticket has been generated. Our system will monitor it, and we will update you shortly.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setIsSupportModalOpen(false);
+                      setSupportSubmitted(false);
+                    }}
+                    className="px-6 py-2.5 rounded-full bg-[#1ed760] text-black font-bold hover:scale-105 transition-all text-sm"
+                  >
+                    Return to Player
+                  </button>
+                </div>
+              )}
+           </div>
+         </div>
+       )}
+
+       {/* Custom Advanced Settings Modal */}
+       {isSettingsModalOpen && (
+         <div id="advanced-settings-modal" className="fixed inset-0 bg-black/80 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
+           <div className="bg-[#181818] rounded-lg w-full max-w-lg p-6 border border-[#282828] shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative animate-fade-in text-white font-sans">
+              <button 
+                 id="close-settings-modal-btn"
+                 onClick={() => setIsSettingsModalOpen(false)}
+                 className="absolute top-4 right-4 text-[#b3b3b3] hover:text-white transition-colors"
+              >
+                 <X className="w-5 h-5" />
+              </button>
+              
+              <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2 pb-4 border-b border-[#282828]">
+                ⚙️ User Interface & Playback Settings
+              </h3>
+
+              <div className="space-y-6 mt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-[14px] font-bold text-white">Audio Streaming Quality</h4>
+                    <span className="text-xs text-[#b3b3b3]">Configure target stream and compression rates</span>
+                  </div>
+                  <select 
+                    value={audioQuality}
+                    onChange={(e) => {
+                      setAudioQuality(e.target.value);
+                      localStorage.setItem('audio_quality', e.target.value);
+                    }}
+                    className="bg-[#242424] text-white px-3 py-1.5 rounded text-[13px] border border-transparent focus:border-white focus:outline-none transition-colors"
+                  >
+                    <option value="low">Low (96kbps) - Save Data</option>
+                    <option value="normal">Normal (160kbps)</option>
+                    <option value="high">High (320kbps)</option>
+                    <option value="extreme">Lossless Extreme HIFI (CD-Audio)</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-[14px] font-bold text-white">Crossfade Tracks</h4>
+                    <span className="text-xs text-[#b3b3b3]">Automatically blend tracks during transitions ({crossfade}s)</span>
+                  </div>
+                  <input 
+                    type="range"
+                    min="0"
+                    max="12"
+                    value={crossfade}
+                    onChange={(e) => {
+                      setCrossfade(Number(e.target.value));
+                      localStorage.setItem('crossfade', e.target.value);
+                    }}
+                    className="w-28 accent-[#1ed760]"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-[14px] font-bold text-white">Continuous Autoplay</h4>
+                    <span className="text-xs text-[#b3b3b3]">Play recommended similar tracks when current queue ends</span>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      const val = !autoplay;
+                      setAutoplay(val);
+                      localStorage.setItem('autoplay', String(val));
+                    }}
+                    className={`w-11 h-6 rounded-full transition-colors relative flex items-center ${autoplay ? 'bg-[#1ed760]' : 'bg-[#404040]'}`}
+                  >
+                    <span className={`w-4 h-4 rounded-full bg-white transition-transform absolute ${autoplay ? 'right-1' : 'left-1'}`} />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between pt-4 border-t border-[#282828]">
+                  <div>
+                    <h4 className="text-[14px] font-bold text-white">Clear Recent Search History</h4>
+                    <span className="text-xs text-[#b3b3b3]">Erases locally stored search queries and tracks</span>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setSearchHistory([]);
+                      localStorage.removeItem('spotify-clone-search-history');
+                      alert("Search history cleared!");
+                    }}
+                    className="px-4 py-2 rounded-full border border-red-500/50 hover:border-red-500 text-red-400 hover:text-white text-xs font-bold hover:scale-105 active:scale-95 transition-all"
+                  >
+                    Clear History
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex justify-end mt-8 pt-4 border-t border-[#282828]">
+                <button
+                  onClick={() => setIsSettingsModalOpen(false)}
+                  className="px-6 py-2 bg-[#1ed760] text-black rounded-full font-bold hover:scale-105 transition-transform text-sm"
+                >
+                  Save & Apply Settings
+                </button>
+              </div>
+           </div>
+         </div>
+       )}
 
       {playlistSelectTrack && (
          <div id="playlist-selector-modal" className="fixed inset-0 bg-black/80 z-[200] flex items-center justify-center p-4">

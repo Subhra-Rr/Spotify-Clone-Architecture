@@ -153,12 +153,7 @@ function FirebaseAuthScreen({ onAuthSuccess }: { onAuthSuccess: () => void }) {
           </svg>
           Continue with Google
         </button>
-
-        <p className="text-gray-400 text-xs text-center leading-relaxed mt-2.5 mb-5 px-1 bg-neutral-900 border border-neutral-800 p-2.5 rounded-md">
-          ⚠️ <span className="text-gray-200 font-semibold">Sandbox Iframe Note:</span> Google Sign-In popups can go blank inside developer iframe previews due to Chrome's cross-origin restrictions. If you encounter this, either <strong>open the app in a new tab</strong> (top right of browser preview) or use the <strong>Email login below</strong>.
-        </p>
-
-        <div className="flex items-center gap-4 mb-6">
+        <div className="flex items-center gap-4 mb-6 mt-4">
           <div className="h-px bg-[#282828] flex-1"></div>
           <span className="text-[#878787] text-sm">or</span>
           <div className="h-px bg-[#282828] flex-1"></div>
