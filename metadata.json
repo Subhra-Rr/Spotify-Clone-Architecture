@@ -1,6 +1,6 @@
 {
   "name": "Spotify Clone Architecture",
-  "description": "Architecture plan and roadmap for a full-stack MERN Spotify clone.",
+  "description": "A high-fidelity full-stack Spotify clone featuring Google/Email auth, real-time Firestore sync, dynamic custom playlist creation, global web streaming via iTunes proxy, and personal profile management.",
   "requestFramePermissions": [
     "camera"
   ],

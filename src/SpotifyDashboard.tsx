@@ -2556,7 +2556,7 @@ export default function SpotifyDashboard() {
                                  await firebaseUser?.delete();
                                  showToast("Your account was successfully deleted.", "success");
                               } catch (e: any) {
-                                 showToast("Error deleting account: " + e.message, "error");
+                                 showToast("Error deleting account: " + (e?.message || String(e)), "error");
                               }
                            }
                         }}
@@ -3294,7 +3294,7 @@ export default function SpotifyDashboard() {
                     showToast("Support ticket submitted successfully!", "success");
                   } catch (err: any) {
                     console.error("Support submission failed:", err);
-                    showToast("Failed to submit support request: " + err.message, "error");
+                    showToast("Failed to submit support request: " + (err?.message || String(err)), "error");
                   } finally {
                     setIsSubmittingSupport(false);
                   }
