@@ -3,12 +3,11 @@ import path from "path";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import YTMusic from "ytmusic-api";
-import ytdl from "@distube/ytdl-core";
 
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT || "3000");
 
 app.use(express.json());
 app.use(cookieParser());
@@ -448,7 +447,7 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
+    app.get('*all', (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
     app.listen(PORT, "0.0.0.0", () => {

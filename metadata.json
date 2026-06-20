@@ -1,5 +1,5 @@
 {
-  "name": "Spotify Clone Architecture",
+  "name": "spotify-clone",
   "description": "A full-stack Spotify clone music player platform with Firebase sync, custom playlists, and media streaming.",
   "requestFramePermissions": [],
   "majorCapabilities": [
