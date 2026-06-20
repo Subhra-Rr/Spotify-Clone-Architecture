@@ -103,7 +103,7 @@ function FirebaseAuthScreen({ onAuthSuccess }: { onAuthSuccess: () => void }) {
           <Music className="w-16 h-16 text-[#1db954]" />
         </div>
         <h1 className="text-3xl font-bold text-white tracking-tight mb-8 text-center">
-          {isLogin ? "Log in to MelodyStream" : "Sign up for MelodyStream"}
+          {isLogin ? "Log in to Spotify Clone" : "Sign up for Spotify Clone"}
         </h1>
 
         {error && (
@@ -244,7 +244,7 @@ function FirebaseAuthScreen({ onAuthSuccess }: { onAuthSuccess: () => void }) {
             }}
             className="text-white hover:text-[#1ed760] hover:underline font-bold transition-colors"
           >
-            {isLogin ? "Sign up for MelodyStream" : "Log in here"}
+            {isLogin ? "Sign up for Spotify Clone" : "Log in here"}
           </button>
         </div>
       </div>

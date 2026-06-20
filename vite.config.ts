@@ -13,9 +13,9 @@ export default defineConfig(() => {
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
         manifest: {
-          name: 'MelodyStream',
-          short_name: 'MelodyStream',
-          description: 'A premium music player platform that runs like a native app',
+          name: 'Spotify Clone',
+          short_name: 'Spotify Clone',
+          description: 'A Spotify Clone that runs like a native app',
           theme_color: '#000000',
           background_color: '#000000',
           display: 'standalone',
