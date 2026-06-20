@@ -1,6 +1,6 @@
 {
-  "name": "spotify-clone",
-  "description": "A full-stack Spotify clone music player platform with Firebase sync, custom playlists, and media streaming.",
+  "name": "melodystream",
+  "description": "A full-stack premium music player platform with Firebase sync, custom playlists, and media streaming.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

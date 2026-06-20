@@ -13,21 +13,21 @@ export default defineConfig(() => {
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
         manifest: {
-          name: 'Spotify Clone',
-          short_name: 'Spotify',
-          description: 'A Spotify Clone that runs like a native app',
+          name: 'MelodyStream',
+          short_name: 'MelodyStream',
+          description: 'A premium music player platform that runs like a native app',
           theme_color: '#000000',
           background_color: '#000000',
           display: 'standalone',
           icons: [
             {
-              src: 'https://upload.wikimedia.org/wikipedia/commons/1/19/Spotify_logo_without_text.svg',
+              src: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎵</text></svg>',
               sizes: '192x192',
               type: 'image/svg+xml',
               purpose: 'any maskable'
             },
             {
-              src: 'https://upload.wikimedia.org/wikipedia/commons/2/26/Spotify_logo_with_text.svg',
+              src: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎵</text></svg>',
               sizes: '512x512',
               type: 'image/svg+xml',
               purpose: 'any maskable'
