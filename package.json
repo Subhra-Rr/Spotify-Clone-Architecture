@@ -12,9 +12,6 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@capacitor/android": "^8.4.1",
-    "@capacitor/cli": "^8.4.1",
-    "@capacitor/core": "^8.4.1",
     "@distube/ytdl-core": "^4.16.12",
     "@google/genai": "^2.8.0",
     "@tailwindcss/vite": "^4.1.14",
