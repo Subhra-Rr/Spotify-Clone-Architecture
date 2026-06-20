@@ -24,38 +24,6 @@
       },
       "required": ["email", "createdAt"]
     },
-    "Playlist": {
-      "title": "Playlist",
-      "description": "A customized playlist created by the user.",
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "Name of the playlist."
-        },
-        "description": {
-          "type": "string",
-          "description": "Optional description of the playlist."
-        },
-        "coverUrl": {
-          "type": "string",
-          "description": "Optional cover image URL."
-        },
-        "ownerId": {
-          "type": "string",
-          "description": "The ID of the user who owns this playlist."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Creation timestamp."
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Last updated timestamp."
-        }
-      },
-      "required": ["name", "ownerId", "createdAt", "updatedAt"]
-    },
     "PlaylistTrack": {
       "title": "PlaylistTrack",
       "description": "A track inside a user's playlist.",
@@ -83,7 +51,30 @@
           "type": "string"
         }
       },
-      "required": ["title", "artist", "addedAt"]
+      "required": ["title", "artist"]
+    },
+    "Playlist": {
+      "title": "Playlist",
+      "description": "A customized playlist created by the user.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the playlist."
+        },
+        "coverUrl": {
+          "type": "string",
+          "description": "Optional cover image URL."
+        },
+        "tracks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/entities/PlaylistTrack"
+          },
+          "description": "The list of tracks belonging to this playlist."
+        }
+      },
+      "required": ["name"]
     },
     "LikedSong": {
       "title": "LikedSong",
@@ -112,7 +103,27 @@
           "type": "string"
         }
       },
-      "required": ["title", "artist", "likedAt"]
+      "required": ["title", "artist"]
+    },
+    "SupportTicket": {
+      "title": "SupportTicket",
+      "description": "A support ticket submitted by the user.",
+      "type": "object",
+      "properties": {
+        "subject": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string"
+        }
+      },
+      "required": ["subject", "message", "email"]
     }
   },
   "firestore": {
@@ -122,23 +133,23 @@
       },
       "description": "User profile data."
     },
-    "/playlists/{playlistId}": {
+    "/users/{userId}/playlists/{playlistId}": {
       "schema": {
         "$ref": "#/entities/Playlist"
       },
       "description": "User-created playlists."
-    },
-    "/playlists/{playlistId}/tracks/{trackId}": {
-      "schema": {
-        "$ref": "#/entities/PlaylistTrack"
-      },
-      "description": "Tracks belonging to a specific playlist."
     },
     "/users/{userId}/likedSongs/{trackId}": {
       "schema": {
         "$ref": "#/entities/LikedSong"
       },
       "description": "Songs liked by the user."
+    },
+    "/users/{userId}/supportTickets/{ticketId}": {
+      "schema": {
+        "$ref": "#/entities/SupportTicket"
+      },
+      "description": "Support tickets submitted by the user."
     }
   }
 }

@@ -100,11 +100,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("Opening OAuth popup directly to provider:", url);
       const authWindow = window.open(url, 'spotify_oauth', 'width=600,height=700');
       if (!authWindow) {
-         alert("Popup blocked! Please allow popups to sign in to Spotify.");
+         console.warn("Popup blocked! Please allow popups to sign in to Spotify.");
       }
     } catch (e: any) {
       console.error("Failed to login", e.message || e);
-      alert(`Failed to start Spotify Login: ${e.message || e}`);
     }
   };
 

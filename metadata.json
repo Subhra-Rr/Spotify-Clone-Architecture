@@ -1,9 +1,7 @@
 {
   "name": "Spotify Clone Architecture",
-  "description": "A high-fidelity full-stack Spotify clone featuring Google/Email auth, real-time Firestore sync, dynamic custom playlist creation, global web streaming via iTunes proxy, and personal profile management.",
-  "requestFramePermissions": [
-    "camera"
-  ],
+  "description": "A full-stack music player platform with Firebase sync, custom playlists, and media streaming.",
+  "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]

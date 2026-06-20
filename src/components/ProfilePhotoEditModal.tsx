@@ -39,8 +39,7 @@ export function ProfilePhotoEditModal({ isOpen, onClose, onUploadFile }: Profile
         videoRef.current.play();
       }
     } catch (err) {
-      console.error("Failed to access camera", err);
-      alert("Could not access the camera. Please check your permissions.");
+      console.warn("Failed to access camera", err);
     }
   };
 
