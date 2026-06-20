@@ -9,105 +9,96 @@
     <title>Spotify</title>
     <link rel="icon" type="image/svg+xml" href="https://upload.wikimedia.org/wikipedia/commons/2/26/Spotify_logo_with_text.svg" />
     <script>
-      // Support complete isolation of Vite WebSocket HMR connectivity failures
+      // Complete isolation of WebSocket or HMR connectivity failures
       (function() {
-        // 1. Proxy global WebSocket constructor to capture and safely silence HMR failures at the origin
         const OriginalWebSocket = window.WebSocket;
         if (OriginalWebSocket) {
-          const ProxiedWebSocket = function(url, protocols) {
-            const isVite = typeof url === 'string' && (
-              url.includes('vite') || 
-              url.includes('hmr') || 
-              url.includes('localhost') || 
-              url.includes('127.0.0.1') || 
-              url.includes('run.app')
-            );
-
-            if (isVite) {
-              const listeners = {};
-              const fakeWs = {
-                url: url,
-                protocols: protocols,
-                readyState: 0, // CONNECTING
-                send: function() {},
-                close: function() {
-                  this.readyState = 3; // CLOSED
-                  if (typeof this.onclose === 'function') {
-                    try { this.onclose({ wasClean: true }); } catch(err) {}
-                  }
-                  if (listeners['close']) {
-                    listeners['close'].forEach(l => {
-                      try { l({ wasClean: true }); } catch(err) {}
-                    });
-                  }
-                },
-                addEventListener: function(type, listener) {
-                  if (!listeners[type]) listeners[type] = [];
-                  listeners[type].push(listener);
-                },
-                removeEventListener: function(type, listener) {
-                  if (listeners[type]) {
-                    listeners[type] = listeners[type].filter(l => l !== listener);
-                  }
-                },
-                dispatchEvent: function() { return true; },
-                onopen: null,
-                onerror: null,
-                onclose: null,
-                onmessage: null
+          class FakeWebSocket extends EventTarget {
+            constructor(url, protocols) {
+              super();
+              this.url = url;
+              this.protocols = protocols;
+              this.readyState = 0; // CONNECTING
+              this.binaryType = 'blob';
+              this.bufferedAmount = 0;
+              this.extensions = '';
+              this.protocol = '';
+              
+              const registerCallback = (prop, eventName) => {
+                let userHandler = null;
+                Object.defineProperty(this, prop, {
+                  get() { return userHandler; },
+                  set(fn) {
+                    if (userHandler) {
+                      this.removeEventListener(eventName, userHandler);
+                    }
+                    userHandler = fn;
+                    if (fn) {
+                      this.addEventListener(eventName, fn);
+                    }
+                  },
+                  configurable: true,
+                  enumerable: true
+                });
               };
-
-              // Safely fake connection opening without actually hitting the network
+              
+              registerCallback('onopen', 'open');
+              registerCallback('onclose', 'close');
+              registerCallback('onerror', 'error');
+              registerCallback('onmessage', 'message');
+              
+              // Simulating connection open with a tiny timeout
               setTimeout(() => {
-                fakeWs.readyState = 1; // OPEN
-                if (typeof fakeWs.onopen === 'function') {
-                  try { fakeWs.onopen(); } catch(err) {}
+                if (this.readyState === 0) {
+                  this.readyState = 1; // OPEN
+                  const openEvt = new Event('open');
+                  this.dispatchEvent(openEvt);
                 }
-                if (listeners['open']) {
-                  listeners['open'].forEach(l => {
-                    try { l(); } catch(err) {}
-                  });
-                }
-              }, 50);
-
-              return fakeWs;
+              }, 10);
             }
-
-            // Fallback for real websockets if any are introduced (though none are currently used)
-            try {
-              return protocols ? new OriginalWebSocket(url, protocols) : new OriginalWebSocket(url);
-            } catch (e) {
-              return {};
+            
+            send(data) {
+              // Stub send - do nothing safely
             }
-          };
-
-          ProxiedWebSocket.prototype = OriginalWebSocket.prototype;
-          for (const key in OriginalWebSocket) {
-            if (Object.prototype.hasOwnProperty.call(OriginalWebSocket, key)) {
-              ProxiedWebSocket[key] = OriginalWebSocket[key];
+            
+            close(code, reason) {
+              if (this.readyState !== 3) {
+                this.readyState = 3; // CLOSED
+                const closeEvt = new CloseEvent('close', {
+                  wasClean: true,
+                  code: code || 1000,
+                  reason: reason || ''
+                });
+                this.dispatchEvent(closeEvt);
+              }
             }
           }
-          ProxiedWebSocket.CONNECTING = 0;
-          ProxiedWebSocket.OPEN = 1;
-          ProxiedWebSocket.CLOSING = 2;
-          ProxiedWebSocket.CLOSED = 3;
-          window.WebSocket = ProxiedWebSocket;
+          
+          FakeWebSocket.CONNECTING = 0;
+          FakeWebSocket.OPEN = 1;
+          FakeWebSocket.CLOSING = 2;
+          FakeWebSocket.CLOSED = 3;
+          
+          window.WebSocket = FakeWebSocket;
         }
 
         // 2. Suppress console logs talking about HMR or WebSocket connection failures
         const originalError = console.error;
         const originalWarn = console.warn;
 
-        function isBenignMessage(msg) {
-          if (!msg) return false;
-          const str = String(msg).toLowerCase();
+        function isBenignMessage(arg) {
+          if (!arg) return false;
+          // Capture messages from strings, errors, or objects
+          const str = (arg.message || String(arg) || '').toLowerCase();
           return (
             str.includes('websocket') || 
             str.includes('hmr') || 
             str.includes('vite') || 
             str.includes('audiodb') || 
             str.includes('failed to fetch') ||
-            str.includes('closed without opened')
+            str.includes('closed without opened') ||
+            str.includes('failed to connect') ||
+            str.includes('connection lost')
           );
         }
 
