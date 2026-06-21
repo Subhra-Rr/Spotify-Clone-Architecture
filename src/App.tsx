@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { AuthProvider, useAuth } from "./SpotifyAuthContext";
-import SpotifyDashboard from "./SpotifyDashboard";
+import { AuthProvider, useAuth } from "./MelodyStreamAuthContext";
+import MelodyStreamDashboard from "./MelodyStreamDashboard";
 import { Eye, EyeOff, Check, X, Music } from "lucide-react";
 import { auth, googleProvider } from "./firebase";
 import {
@@ -296,8 +296,8 @@ function FirebaseAuthScreen({ onAuthSuccess }: { onAuthSuccess: () => void }) {
   );
 }
 
-// Spotify Auth Setup
-function SpotifyAuthScreen() {
+// MelodyStream Auth Setup
+function MelodyStreamAuthScreen() {
   const { login, bypass } = useAuth();
   const [authErr, setAuthErr] = useState("");
   useEffect(() => {
@@ -347,7 +347,7 @@ function MainLayout() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Automatically trigger the standalone bypass so they are never blocked by Spotify connection screens
+    // Automatically trigger the standalone bypass so they are never blocked by connection screens
     if (!isAuthenticated) {
       bypass();
     }
@@ -372,7 +372,7 @@ function MainLayout() {
     return <FirebaseAuthScreen onAuthSuccess={() => {}} />;
   }
 
-  return <SpotifyDashboard />;
+  return <MelodyStreamDashboard />;
 }
 
 export default function App() {

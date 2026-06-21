@@ -412,12 +412,12 @@ app.get("/api/callback", async (req, res) => {
       <head><title>MelodyStream Login</title></head>
       <body>
         <script>
-          localStorage.setItem('spotify_access_token', '${access_token}');
-          localStorage.setItem('spotify_refresh_token', '${refresh_token}');
-          localStorage.setItem('spotify_expires_at', '${expires_at}');
+          localStorage.setItem('melodystream_access_token', '${access_token}');
+          localStorage.setItem('melodystream_refresh_token', '${refresh_token}');
+          localStorage.setItem('melodystream_expires_at', '${expires_at}');
           // If opened in popup, message opener. If redirected, redirect back
           if (window.opener) {
-             window.opener.postMessage({ type: 'SPOTIFY_AUTH_SUCCESS', access_token: '${access_token}', refresh_token: '${refresh_token}', expires_in: ${expires_in} }, '*');
+             window.opener.postMessage({ type: 'MELODYSTREAM_AUTH_SUCCESS', access_token: '${access_token}', refresh_token: '${refresh_token}', expires_in: ${expires_in} }, '*');
              window.close();
           } else {
              window.location.href = '/';

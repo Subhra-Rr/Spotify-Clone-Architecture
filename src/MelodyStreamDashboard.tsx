@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, SkipForward, SkipBack, Heart, Search, Home, Library, Volume2, Plus, ArrowLeft, ArrowRight, UserCircle2, Repeat, Repeat1, Shuffle, ListMusic, ListPlus, LogOut, Upload, Loader2, PanelRightClose, BadgeCheck, MoreHorizontal, X, VolumeX, ExternalLink, Share2, WifiOff, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from "motion/react";
 import YouTube from 'react-youtube';
-import { useAuth } from './SpotifyAuthContext';
+import { useAuth } from './MelodyStreamAuthContext';
 import { auth, db, storage, googleProvider } from './firebase';
 import { signInWithPopup, User, onAuthStateChanged, signOut, updateProfile } from 'firebase/auth';
 import { collection, addDoc, query, getDocs, doc, setDoc, serverTimestamp, deleteDoc, getDoc } from 'firebase/firestore';

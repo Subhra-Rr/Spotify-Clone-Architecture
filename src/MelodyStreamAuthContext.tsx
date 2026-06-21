@@ -11,16 +11,16 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [accessToken, setAccessToken] = useState<string | null>(localStorage.getItem('spotify_access_token'));
-  const [refreshToken, setRefreshToken] = useState<string | null>(localStorage.getItem('spotify_refresh_token'));
+  const [accessToken, setAccessToken] = useState<string | null>(localStorage.getItem('melodystream_access_token'));
+  const [refreshToken, setRefreshToken] = useState<string | null>(localStorage.getItem('melodystream_refresh_token'));
   const [expiresAt, setExpiresAt] = useState<number | null>(
-    localStorage.getItem('spotify_expires_at') ? Number(localStorage.getItem('spotify_expires_at')) : null
+    localStorage.getItem('melodystream_expires_at') ? Number(localStorage.getItem('melodystream_expires_at')) : null
   );
 
   useEffect(() => {
     // Listen for messages from the OAuth popup
     const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'SPOTIFY_AUTH_SUCCESS') {
+      if (event.data?.type === 'MELODYSTREAM_AUTH_SUCCESS') {
         const { access_token, refresh_token, expires_in } = event.data;
         const expires_at = Date.now() + expires_in * 1000;
         
@@ -28,11 +28,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRefreshToken(refresh_token);
         setExpiresAt(expires_at);
 
-        localStorage.setItem('spotify_access_token', access_token);
+        localStorage.setItem('melodystream_access_token', access_token);
         if (refresh_token) {
-          localStorage.setItem('spotify_refresh_token', refresh_token);
+          localStorage.setItem('melodystream_refresh_token', refresh_token);
         }
-        localStorage.setItem('spotify_expires_at', expires_at.toString());
+        localStorage.setItem('melodystream_expires_at', expires_at.toString());
       }
     };
 
@@ -56,14 +56,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const data = await res.json();
           if (data.access_token) {
             setAccessToken(data.access_token);
-            localStorage.setItem('spotify_access_token', data.access_token);
+            localStorage.setItem('melodystream_access_token', data.access_token);
             if (data.refresh_token) {
-              setRefreshToken(data.refresh_token);
-              localStorage.setItem('spotify_refresh_token', data.refresh_token);
+               setRefreshToken(data.refresh_token);
+               localStorage.setItem('melodystream_refresh_token', data.refresh_token);
             }
             const newExpiresAt = Date.now() + data.expires_in * 1000;
             setExpiresAt(newExpiresAt);
-            localStorage.setItem('spotify_expires_at', newExpiresAt.toString());
+            localStorage.setItem('melodystream_expires_at', newExpiresAt.toString());
           }
         } catch (error) {
           console.warn("Failed to refresh token", error);
@@ -98,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       console.log("Opening OAuth popup directly to provider:", url);
-      const authWindow = window.open(url, 'spotify_oauth', 'width=600,height=700');
+      const authWindow = window.open(url, 'melodystream_oauth', 'width=600,height=700');
       if (!authWindow) {
          console.warn("Popup blocked! Please allow popups to sign in to MelodyStream.");
       }
@@ -114,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!origin.endsWith('.run.app') && !origin.includes('localhost')) {
         return;
       }
-      if (event.data?.type === 'SPOTIFY_AUTH_SUCCESS') {
+      if (event.data?.type === 'MELODYSTREAM_AUTH_SUCCESS') {
         const { access_token, refresh_token, expires_in } = event.data;
         setAccessToken(access_token);
         if (refresh_token) {
@@ -129,16 +129,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const bypass = () => {
     setAccessToken('local_bypass');
-    localStorage.setItem('spotify_access_token', 'local_bypass');
+    localStorage.setItem('melodystream_access_token', 'local_bypass');
   };
 
   const logout = () => {
     setAccessToken(null);
     setRefreshToken(null);
     setExpiresAt(null);
-    localStorage.removeItem('spotify_access_token');
-    localStorage.removeItem('spotify_refresh_token');
-    localStorage.removeItem('spotify_expires_at');
+    localStorage.removeItem('melodystream_access_token');
+    localStorage.removeItem('melodystream_refresh_token');
+    localStorage.removeItem('melodystream_expires_at');
   };
 
   return (

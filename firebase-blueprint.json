@@ -2,7 +2,7 @@
   "entities": {
     "User": {
       "title": "User",
-      "description": "A user of the Spotify clone app.",
+      "description": "A user of the MelodyStream app.",
       "type": "object",
       "properties": {
         "email": {
