@@ -166,13 +166,13 @@ const EqualizerIcon = () => {
   );
 };
 
-const SPOTIFY_START_BROWSING = [
+const MELODYSTREAM_START_BROWSING = [
   { id: 'c-music', title: 'Music', color: '#dc148c', coverUrl: 'https://images.unsplash.com/photo-1493225457124-a1a2a5f5f4b0?w=300&h=300&fit=crop' },
   { id: 'c-podcasts', title: 'Podcasts', color: '#006450', coverUrl: 'https://images.unsplash.com/photo-1593697972679-c4041d132a46?w=300&h=300&fit=crop' },
   { id: 'c-events', title: 'Live Events', color: '#8400e7', coverUrl: 'https://images.unsplash.com/photo-1540039155732-d688d07eb02e?w=300&h=300&fit=crop' },
 ];
 
-const SPOTIFY_BROWSE_ALL = [
+const MELODYSTREAM_BROWSE_ALL = [
   { id: 'c-made', title: 'Made For You', color: '#1e3264', coverUrl: 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=300&h=300&fit=crop' },
   { id: 'c-releases', title: 'New Releases', color: '#608108', coverUrl: 'https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=300&h=300&fit=crop' },
   { id: 'c-summer', title: 'Summer', color: '#27856a', coverUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=300&h=300&fit=crop' },
@@ -183,7 +183,7 @@ const SPOTIFY_BROWSE_ALL = [
   { id: 'c-podcharts', title: 'Podcast Charts', color: '#006450', coverUrl: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=300&h=300&fit=crop' },
 ];
 
-export default function SpotifyDashboard() {
+export default function MelodyStreamDashboard() {
   const { accessToken, logout } = useAuth();
   const { enhanceTracks, enhanceTrack } = useAudioDB();
   
