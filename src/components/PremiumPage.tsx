@@ -37,7 +37,7 @@ export const PremiumPage = ({ onBuy }: { onBuy: () => void }) => {
              <div className="bg-[#242424] rounded-[10px] p-6 flex flex-col relative overflow-hidden h-full">
                 <div className="bg-[#1ed760] text-black font-bold text-[13px] px-3 py-1 rounded-sm inline-block mb-4 w-max">₹99 for 3 months</div>
                 <div className="flex items-center gap-2 mb-2">
-                   <img src="https://storage.googleapis.com/pr-newsroom-wp/1/2018/11/Spotify_Logo_RGB_White.png" alt="Spotify" className="h-5" />
+                   <span className="font-extrabold text-[#1ed760] text-lg tracking-wider">MelodyStream</span>
                    <h3 className="text-xl font-bold text-white">Premium</h3>
                 </div>
                 <h3 className="text-3xl font-bold text-[#1ed760] mb-2 font-black">Standard</h3>
@@ -58,7 +58,7 @@ export const PremiumPage = ({ onBuy }: { onBuy: () => void }) => {
              {/* Plan 2 */}
              <div className="bg-[#242424] rounded-[10px] p-6 flex flex-col relative overflow-hidden h-full">
                 <div className="flex items-center gap-2 mb-2 mt-10">
-                   <img src="https://storage.googleapis.com/pr-newsroom-wp/1/2018/11/Spotify_Logo_RGB_White.png" alt="Spotify" className="h-5" />
+                   <span className="font-extrabold text-[#ffc864] text-lg tracking-wider">MelodyStream</span>
                    <h3 className="text-xl font-bold text-white">Premium</h3>
                 </div>
                 <h3 className="text-3xl font-bold text-[#ffc864] mb-2 font-black">Platinum</h3>
@@ -78,7 +78,7 @@ export const PremiumPage = ({ onBuy }: { onBuy: () => void }) => {
              <div className="bg-[#242424] rounded-[10px] p-6 flex flex-col relative overflow-hidden h-full">
                 <div className="bg-[#a5b4fc] text-black font-bold text-[13px] px-3 py-1 rounded-sm inline-block mb-4 w-max">Savings available</div>
                 <div className="flex items-center gap-2 mb-2">
-                   <img src="https://storage.googleapis.com/pr-newsroom-wp/1/2018/11/Spotify_Logo_RGB_White.png" alt="Spotify" className="h-5" />
+                   <span className="font-extrabold text-[#a5b4fc] text-lg tracking-wider">MelodyStream</span>
                    <h3 className="text-xl font-bold text-white">Premium</h3>
                 </div>
                 <h3 className="text-3xl font-bold text-[#a5b4fc] mb-2 font-black">Student</h3>

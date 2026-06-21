@@ -409,7 +409,7 @@ app.get("/api/callback", async (req, res) => {
     const html = `
       <!DOCTYPE html>
       <html>
-      <head><title>Spotify Login</title></head>
+      <head><title>MelodyStream Login</title></head>
       <body>
         <script>
           localStorage.setItem('spotify_access_token', '${access_token}');

@@ -1462,7 +1462,7 @@ export default function SpotifyDashboard() {
                         />
                         <div className="flex flex-col overflow-hidden flex-1">
                             <span className="font-semibold text-white truncate">{pl.name}</span>
-                            <span className="text-sm text-[#b3b3b3] truncate">Playlist • {pl.owner?.display_name || 'Spotify'}</span>
+                            <span className="text-sm text-[#b3b3b3] truncate">Playlist • {pl.owner?.display_name || 'MelodyStream'}</span>
                         </div>
                     </div>
                 ))}
@@ -1549,7 +1549,7 @@ export default function SpotifyDashboard() {
                         </button>
                       </li>
                       <li>
-                        <button onClick={() => window.open('https://www.spotify.com/premium/', '_blank')} className="w-full text-left px-4 py-3 hover:bg-[#3e3e3e] transition-colors">
+                        <button onClick={() => { setIsProfileMenuOpen(false); navigateTo('premium'); }} className="w-full text-left px-4 py-3 hover:bg-[#3e3e3e] transition-colors">
                           Upgrade to Premium
                         </button>
                       </li>
@@ -1594,7 +1594,7 @@ export default function SpotifyDashboard() {
              <PremiumPage 
                 onBuy={() => {
                    setIsPremium(true);
-                   showToast('Welcome to Spotify Premium! Enjoy ad-free listening.', 'success');
+                   showToast('Welcome to MelodyStream Premium! Enjoy ad-free listening.', 'success');
                    navigateTo('home');
                 }} 
              />
@@ -2193,7 +2193,7 @@ export default function SpotifyDashboard() {
                       </button>
                       <button 
                          className="text-[#b3b3b3] hover:text-white transition-colors"
-                         onClick={() => handleShare(`Listen to ${pl.name}`, `Check out this playlist on Spotify Clone: ${pl.name}`)}
+                         onClick={() => handleShare(`Listen to ${pl.name}`, `Check out this playlist on MelodyStream: ${pl.name}`)}
                          title="Share Playlist"
                       >
                          <Share2 className="w-8 h-8" />
@@ -2648,7 +2648,7 @@ export default function SpotifyDashboard() {
                           </div>
                           <div className="flex flex-col truncate">
                              <span className="text-white text-[16px] font-bold truncate">{pl.name}</span>
-                             <span className="text-[#b3b3b3] text-[13px] truncate">Playlist • {pl.owner?.display_name || 'Spotify'}</span>
+                             <span className="text-[#b3b3b3] text-[13px] truncate">Playlist • {pl.owner?.display_name || 'MelodyStream'}</span>
                           </div>
                        </div>
                     ))}
@@ -3198,7 +3198,7 @@ export default function SpotifyDashboard() {
                 <div>
                   <h3 className="text-xl font-bold text-white leading-tight">Account Overview</h3>
                   <p className="text-xs text-[#b3b3b3] uppercase tracking-wider font-semibold mt-1">
-                    {isPremium ? "⭐ Spotify Premium User" : "Spotify Free User"}
+                    {isPremium ? "⭐ MelodyStream Premium User" : "MelodyStream Free User"}
                   </p>
                 </div>
               </div>
@@ -3206,7 +3206,7 @@ export default function SpotifyDashboard() {
               <div className="space-y-4">
                 <div>
                    <span className="text-xs text-[#b3b3b3] block uppercase tracking-wider">Username / Display Name</span>
-                   <span className="text-[15px] font-semibold block mt-0.5">{firebaseUser?.displayName || "Spotify Listener"}</span>
+                   <span className="text-[15px] font-semibold block mt-0.5">{firebaseUser?.displayName || "MelodyStream Listener"}</span>
                 </div>
                 <div>
                    <span className="text-xs text-[#b3b3b3] block uppercase tracking-wider">Email Address</span>
@@ -3300,7 +3300,7 @@ export default function SpotifyDashboard() {
                   }
                 }}>
                   <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
-                    🎧 Spotify Customer Support
+                    🎧 MelodyStream Customer Support
                   </h3>
                   <p className="text-[#b3b3b3] text-[13px] mb-4">
                     Encountered an issue or have feature suggestions? Send us a ticket and our technical assistants will evaluate it.
@@ -3342,7 +3342,7 @@ export default function SpotifyDashboard() {
                         rows={4}
                         value={supportMessage}
                         onChange={(e) => setSupportMessage(e.target.value)}
-                        placeholder="Please tell us what went wrong or how we can improve our Spotify experience..."
+                        placeholder="Please tell us what went wrong or how we can improve our MelodyStream experience..."
                         className="bg-[#242424] text-[#fff] px-3 py-2.5 rounded text-[14px] border border-transparent focus:border-white focus:outline-none transition-colors resize-none w-full"
                       />
                     </div>
