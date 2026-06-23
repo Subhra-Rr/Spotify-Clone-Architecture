@@ -35,12 +35,12 @@ export const PremiumPage = ({ onBuy }: { onBuy: () => void }) => {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
              {/* Plan 1 */}
              <div className="bg-[#242424] rounded-[10px] p-6 flex flex-col relative overflow-hidden h-full">
-                <div className="bg-[#1ed760] text-black font-bold text-[13px] px-3 py-1 rounded-sm inline-block mb-4 w-max">₹99 for 3 months</div>
+                <div className="bg-[#8b5cf6] text-white font-bold text-[13px] px-3 py-1 rounded-sm inline-block mb-4 w-max">₹99 for 3 months</div>
                 <div className="flex items-center gap-2 mb-2">
-                   <span className="font-extrabold text-[#1ed760] text-lg tracking-wider">MelodyStream</span>
+                   <span className="font-extrabold text-[#a78bfa] text-lg tracking-wider">MelodyStream</span>
                    <h3 className="text-xl font-bold text-white">Premium</h3>
                 </div>
-                <h3 className="text-3xl font-bold text-[#1ed760] mb-2 font-black">Standard</h3>
+                <h3 className="text-3xl font-bold text-[#a78bfa] mb-2 font-black">Standard</h3>
                 <p className="text-white text-[15px] font-bold mb-1">₹99 for 3 months</p>
                 <p className="text-[#b3b3b3] text-[14px] mb-6 font-medium">₹139 / month after</p>
                 <hr className="border-[#333] mb-6"/>
@@ -51,7 +51,7 @@ export const PremiumPage = ({ onBuy }: { onBuy: () => void }) => {
                   <li className="flex gap-4 items-start mb-4"><span className="w-[4px] h-[4px] bg-white rounded-full mt-2 shrink-0" /> Cancel anytime</li>
                   <li className="flex gap-4 items-start mb-0"><span className="w-[4px] h-[4px] bg-white rounded-full mt-2 shrink-0" /> Subscribe or one-time payment</li>
                 </ul>
-                <button onClick={onBuy} className="w-full bg-[#1ed760] text-black font-bold py-[14px] px-8 rounded-full hover:scale-104 active:scale-95 transition-all text-base hover:bg-[#1fdf64]">Try 3 months for ₹99</button>
+                <button onClick={onBuy} className="w-full bg-[#8b5cf6] text-white font-bold py-[14px] px-8 rounded-full hover:scale-104 active:scale-95 transition-all text-base hover:bg-[#7c3aed]">Try 3 months for ₹99</button>
                 <p className="text-[11px] text-[#b3b3b3] mt-4 text-center">₹99 for 3 months, then ₹139 per month after. Offer only available if you haven't tried Premium before. <span className="underline">Terms apply.</span></p>
              </div>
 

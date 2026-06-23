@@ -26,7 +26,7 @@ html, body, #root {
   position: fixed;
 }
 
-/* Custom Scrollbar for Spotify look */
+/* Custom Scrollbar for MelodyStream look */
 .custom-scrollbar::-webkit-scrollbar {
   width: 12px;
 }
@@ -52,8 +52,8 @@ html, body, #root {
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
-/* Custom Spotify Range Slider */
-.spotify-range {
+/* Custom MelodyStream Range Slider */
+.melodystream-range {
   -webkit-appearance: none;
   appearance: none;
   height: 4px;
@@ -62,7 +62,7 @@ html, body, #root {
   cursor: pointer;
 }
 
-.spotify-range::-webkit-slider-thumb {
+.melodystream-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 12px;
@@ -75,11 +75,11 @@ html, body, #root {
   transition: opacity 0.1s;
 }
 
-.spotify-range:hover::-webkit-slider-thumb {
+.melodystream-range:hover::-webkit-slider-thumb {
   opacity: 1;
 }
 
-.spotify-range::-moz-range-thumb {
+.melodystream-range::-moz-range-thumb {
   width: 12px;
   height: 12px;
   border: none;
@@ -91,6 +91,6 @@ html, body, #root {
   transition: opacity 0.1s;
 }
 
-.spotify-range:hover::-moz-range-thumb {
+.melodystream-range:hover::-moz-range-thumb {
   opacity: 1;
 }

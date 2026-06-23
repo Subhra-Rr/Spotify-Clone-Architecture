@@ -1,5 +1,5 @@
 {
-  "name": "melodystream",
+  "name": "MelodyStream",
   "description": "A full-stack premium music player platform with Firebase sync, custom playlists, and media streaming.",
   "requestFramePermissions": [],
   "majorCapabilities": [

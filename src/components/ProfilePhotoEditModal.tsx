@@ -94,7 +94,7 @@ export function ProfilePhotoEditModal({ isOpen, onClose, onUploadFile }: Profile
                 <div className="flex flex-col gap-4">
                   <button
                     onClick={() => document.getElementById('modal-profile-upload')?.click()}
-                    className="flex items-center justify-center gap-3 w-full bg-[#1db954] text-black font-bold py-4 rounded-full hover:scale-105 active:scale-95 transition-transform"
+                    className="flex items-center justify-center gap-3 w-full bg-[#8b5cf6] text-white font-bold py-4 rounded-full hover:scale-105 active:scale-95 transition-transform"
                   >
                     <Upload className="w-5 h-5" />
                     Upload from Files
@@ -159,7 +159,7 @@ export function ProfilePhotoEditModal({ isOpen, onClose, onUploadFile }: Profile
                         </button>
                         <button 
                            onClick={capturePhoto}
-                           className="px-6 py-2 rounded-full bg-[#1db954] text-black font-bold hover:scale-105 transition-transform"
+                           className="px-6 py-2 rounded-full bg-[#8b5cf6] text-white font-bold hover:scale-105 transition-transform"
                         >
                            Capture
                         </button>

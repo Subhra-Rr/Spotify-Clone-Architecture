@@ -159,9 +159,9 @@ function formatTime(seconds: number) {
 const EqualizerIcon = () => {
   return (
     <div className="flex items-end justify-center gap-[2px] h-4 w-4">
-      <motion.div animate={{ height: ["4px", "14px", "6px", "12px", "4px"] }} transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut" }} className="w-1 bg-[#1db954] rounded-[1px]" />
-      <motion.div animate={{ height: ["12px", "4px", "16px", "8px", "12px"] }} transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0.2 }} className="w-1 bg-[#1db954] rounded-[1px]" />
-      <motion.div animate={{ height: ["6px", "16px", "4px", "10px", "6px"] }} transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0.4 }} className="w-1 bg-[#1db954] rounded-[1px]" />
+      <motion.div animate={{ height: ["4px", "14px", "6px", "12px", "4px"] }} transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut" }} className="w-1 bg-[#8b5cf6] rounded-[1px]" />
+      <motion.div animate={{ height: ["12px", "4px", "16px", "8px", "12px"] }} transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0.2 }} className="w-1 bg-[#8b5cf6] rounded-[1px]" />
+      <motion.div animate={{ height: ["6px", "16px", "4px", "10px", "6px"] }} transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0.4 }} className="w-1 bg-[#8b5cf6] rounded-[1px]" />
     </div>
   );
 };
@@ -1610,15 +1610,15 @@ export default function MelodyStreamDashboard() {
                   </div>
                   
                   <div className="flex items-center gap-2 mb-6 overflow-x-auto no-scrollbar pb-2">
-                     <button onClick={() => setHomeCategory('all')} className={`${homeCategory === 'all' ? 'bg-[#1ed760] text-black' : 'bg-[#2a2a2a] text-white hover:bg-[#333]'} px-4 py-1.5 rounded-full text-sm font-semibold shrink-0 transition-colors`}>All</button>
-                     <button onClick={() => setHomeCategory('music')} className={`${homeCategory === 'music' ? 'bg-[#1ed760] text-black' : 'bg-[#2a2a2a] text-white hover:bg-[#333]'} px-4 py-1.5 rounded-full text-sm font-semibold shrink-0 transition-colors`}>Music</button>
-                     <button onClick={() => setHomeCategory('podcasts')} className={`${homeCategory === 'podcasts' ? 'bg-[#1ed760] text-black' : 'bg-[#2a2a2a] text-white hover:bg-[#333]'} px-4 py-1.5 rounded-full text-sm font-semibold shrink-0 transition-colors`}>Podcasts</button>
-                     <button onClick={() => setHomeCategory('audiobooks')} className={`${homeCategory === 'audiobooks' ? 'bg-[#1ed760] text-black' : 'bg-[#2a2a2a] text-white hover:bg-[#333]'} px-4 py-1.5 rounded-full text-sm font-semibold shrink-0 transition-colors`}>Audiobooks</button>
+                     <button onClick={() => setHomeCategory('all')} className={`${homeCategory === 'all' ? 'bg-[#8b5cf6] text-white' : 'bg-[#2a2a2a] text-white hover:bg-[#333]'} px-4 py-1.5 rounded-full text-sm font-semibold shrink-0 transition-colors`}>All</button>
+                     <button onClick={() => setHomeCategory('music')} className={`${homeCategory === 'music' ? 'bg-[#8b5cf6] text-white' : 'bg-[#2a2a2a] text-white hover:bg-[#333]'} px-4 py-1.5 rounded-full text-sm font-semibold shrink-0 transition-colors`}>Music</button>
+                     <button onClick={() => setHomeCategory('podcasts')} className={`${homeCategory === 'podcasts' ? 'bg-[#8b5cf6] text-white' : 'bg-[#2a2a2a] text-white hover:bg-[#333]'} px-4 py-1.5 rounded-full text-sm font-semibold shrink-0 transition-colors`}>Podcasts</button>
+                     <button onClick={() => setHomeCategory('audiobooks')} className={`${homeCategory === 'audiobooks' ? 'bg-[#8b5cf6] text-white' : 'bg-[#2a2a2a] text-white hover:bg-[#333]'} px-4 py-1.5 rounded-full text-sm font-semibold shrink-0 transition-colors`}>Audiobooks</button>
                   </div>
                   
                   {isLoadingCategory ? (
                      <div className="flex flex-col items-center justify-center p-12 mt-10">
-                        <Loader2 className="w-12 h-12 text-[#1db954] animate-spin mb-4" />
+                        <Loader2 className="w-12 h-12 text-[#8b5cf6] animate-spin mb-4" />
                         <p className="text-[#b3b3b3] font-medium animate-pulse text-lg">Loading {homeCategory}...</p>
                      </div>
                   ) : homeCategory !== 'all' ? (
@@ -1637,7 +1637,7 @@ export default function MelodyStreamDashboard() {
                                  <div className="relative aspect-square w-full mb-4 shadow-[0_8px_24px_rgba(0,0,0,0.5)] overflow-hidden rounded flex-shrink-0">
                                    <img src={item.coverUrl} className="object-cover w-full h-full bg-[#333]" alt="cover" />
                                      <button 
-                                       className={`absolute bottom-2 right-2 bg-[#1db954] text-black w-12 h-12 rounded-full flex items-center justify-center shadow-xl hover:scale-105 hover:bg-[#1ed760] transition-all transform duration-300 
+                                       className={`absolute bottom-2 right-2 bg-[#8b5cf6] text-black w-12 h-12 rounded-full flex items-center justify-center shadow-xl hover:scale-105 hover:bg-[#a78bfa] transition-all transform duration-300 
                                          ${queue === categoryData && currentTrackIndex === i && isPlaying ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0'}`}
                                        onClick={(e) => {
                                          e.stopPropagation();
@@ -1697,7 +1697,7 @@ export default function MelodyStreamDashboard() {
                         </button>
 
                         <button 
-                          className={`absolute right-4 bg-[#1db954] text-black w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-xl hover:scale-105 hover:bg-[#1ed760] transition-all transform z-20
+                          className={`absolute right-4 bg-[#8b5cf6] text-white w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-xl hover:scale-105 hover:bg-[#a78bfa] transition-all transform z-20
                              ${queue === tracks && currentTrackIndex === i && isPlaying ? 'opacity-100 scale-100' : 'opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100'}`}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1734,7 +1734,7 @@ export default function MelodyStreamDashboard() {
                                 <img src={cover || 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=100&auto=format&fit=crop'} className="object-cover w-full h-full bg-[#333]" alt="cover" />
                                 
                                 <button 
-                                  className={`absolute bottom-2 right-2 bg-[#1db954] text-black w-12 h-12 rounded-full flex items-center justify-center shadow-xl hover:scale-105 hover:bg-[#1ed760] transition-all transform duration-300 
+                                  className={`absolute bottom-2 right-2 bg-[#8b5cf6] text-black w-12 h-12 rounded-full flex items-center justify-center shadow-xl hover:scale-105 hover:bg-[#a78bfa] transition-all transform duration-300 
                                     ${(!item.images && queue === tracks && currentTrackIndex === i && isPlaying) ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0'}`}
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -1832,7 +1832,7 @@ export default function MelodyStreamDashboard() {
                                  <div className="relative aspect-square w-full mb-4 shadow-[0_8px_24px_rgba(0,0,0,0.5)] overflow-hidden rounded flex-shrink-0">
                                    <img src={item.coverUrl} className="object-cover w-full h-full bg-[#333]" alt="cover" />
                                      <button 
-                                       className={`absolute bottom-2 right-2 bg-[#1db954] text-black w-12 h-12 rounded-full flex items-center justify-center shadow-xl hover:scale-105 hover:bg-[#1ed760] transition-all transform duration-300 
+                                       className={`absolute bottom-2 right-2 bg-[#8b5cf6] text-black w-12 h-12 rounded-full flex items-center justify-center shadow-xl hover:scale-105 hover:bg-[#a78bfa] transition-all transform duration-300 
                                          ${queue === searchHistory && currentTrackIndex === i && isPlaying ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0'}`}
                                        onClick={(e) => {
                                          e.stopPropagation();
@@ -1925,7 +1925,7 @@ export default function MelodyStreamDashboard() {
                                    <ListPlus className="w-5 h-5" />
                                 </button>
                                 <button 
-                                  className={`absolute bottom-2 right-2 bg-[#1db954] text-black w-12 h-12 rounded-full flex items-center justify-center shadow-xl hover:scale-105 hover:bg-[#1ed760] transition-all transform duration-300 
+                                  className={`absolute bottom-2 right-2 bg-[#8b5cf6] text-black w-12 h-12 rounded-full flex items-center justify-center shadow-xl hover:scale-105 hover:bg-[#a78bfa] transition-all transform duration-300 
                                     ${queue === sortedSearchResults && currentTrackIndex === i && isPlaying ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0'}`}
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -2026,7 +2026,7 @@ export default function MelodyStreamDashboard() {
 
                   <div className="flex items-center gap-6 mb-8 mt-4">
                      <button 
-                       className="bg-[#1db954] text-black w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 hover:bg-[#1ed760] transition-all"
+                       className="bg-[#8b5cf6] text-white w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 hover:bg-[#a78bfa] transition-all"
                        onClick={() => handleTrackSelect(0, likedTracks)}
                        disabled={likedTracks.length === 0}
                      >
@@ -2053,7 +2053,7 @@ export default function MelodyStreamDashboard() {
                                    {queue === likedTracks && currentTrackIndex === i && isPlaying ? (
                                        <EqualizerIcon />
                                    ) : (
-                                       <span className={queue === likedTracks && currentTrackIndex === i ? "text-[#1db954]" : ""}>{i + 1}</span>
+                                       <span className={queue === likedTracks && currentTrackIndex === i ? "text-[#8b5cf6]" : ""}>{i + 1}</span>
                                    )}
                                  </div>
                                  <div className="w-8 text-center hidden group-hover:block">
@@ -2061,7 +2061,7 @@ export default function MelodyStreamDashboard() {
                                  </div>
                                  <img src={item.coverUrl} className="w-10 h-10 rounded object-cover shadow-sm" alt="" />
                                  <div className="flex-col hidden sm:flex truncate pr-4">
-                                    <span className={`hover:underline truncate text-[15px] ${queue === likedTracks && currentTrackIndex === i ? "text-[#1db954]" : "text-white"}`}>{item.title}</span>
+                                    <span className={`hover:underline truncate text-[15px] ${queue === likedTracks && currentTrackIndex === i ? "text-[#8b5cf6]" : "text-white"}`}>{item.title}</span>
                                     <span 
                                        className="text-[#b3b3b3] hover:text-white hover:underline truncate text-sm"
                                        onClick={(e) => {
@@ -2098,7 +2098,7 @@ export default function MelodyStreamDashboard() {
                                     <ListPlus className="w-5 h-5" />
                                  </button>
                                  <button 
-                                   className="text-[#1db954] hover:scale-105 transition-transform"
+                                   className="text-[#8b5cf6] hover:scale-105 transition-transform"
                                    onClick={(e) => {
                                       e.stopPropagation();
                                       toggleLike(item);
@@ -2185,7 +2185,7 @@ export default function MelodyStreamDashboard() {
 
                    <div className="flex items-center gap-6 mb-8 mt-4">
                       <button 
-                        className="bg-[#1db954] text-black w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 hover:bg-[#1ed760] transition-all disabled:opacity-50"
+                        className="bg-[#8b5cf6] text-white w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 hover:bg-[#a78bfa] transition-all disabled:opacity-50"
                         onClick={() => handleTrackSelect(0, plTracks)}
                         disabled={plTracks.length === 0}
                       >
@@ -2266,7 +2266,7 @@ export default function MelodyStreamDashboard() {
                                     {queue === plTracks && currentTrackIndex === i && isPlaying ? (
                                          <EqualizerIcon />
                                     ) : (
-                                         <span className={queue === plTracks && currentTrackIndex === i ? "text-[#1db954]" : ""}>{i + 1}</span>
+                                         <span className={queue === plTracks && currentTrackIndex === i ? "text-[#8b5cf6]" : ""}>{i + 1}</span>
                                     )}
                                   </div>
                                   <div className="w-8 justify-center hidden group-hover:flex">
@@ -2274,7 +2274,7 @@ export default function MelodyStreamDashboard() {
                                   </div>
                                   <img src={item.coverUrl} className="w-10 h-10 rounded object-cover shadow-sm" alt="" />
                                   <div className="flex-1 flex flex-col">
-                                     <span className={`hover:underline truncate text-[15px] ${queue === plTracks && currentTrackIndex === i ? "text-[#1db954]" : "text-white"}`}>{item.title}</span>
+                                     <span className={`hover:underline truncate text-[15px] ${queue === plTracks && currentTrackIndex === i ? "text-[#8b5cf6]" : "text-white"}`}>{item.title}</span>
                                      <span 
                                         className="text-[#b3b3b3] hover:text-white hover:underline truncate text-sm"
                                         onClick={(e) => {
@@ -2346,7 +2346,7 @@ export default function MelodyStreamDashboard() {
                                      <X className="w-5 h-5" />
                                   </button>
                                   <button 
-                                    className={`${likedTracks.some(t => t.id === item.id) ? 'text-[#1db954]' : 'text-[#b3b3b3] hover:text-white'} hover:scale-105 transition-transform`}
+                                    className={`${likedTracks.some(t => t.id === item.id) ? 'text-[#8b5cf6]' : 'text-[#b3b3b3] hover:text-white'} hover:scale-105 transition-transform`}
                                     onClick={(e) => {
                                        e.stopPropagation();
                                        toggleLike(item);
@@ -2383,7 +2383,7 @@ export default function MelodyStreamDashboard() {
                   
                   <div className="flex items-center gap-4 mb-8">
                      <button 
-                       className="w-14 h-14 bg-[#1ed760] rounded-full flex items-center justify-center hover:scale-105 hover:bg-[#3be477] transition-all cursor-pointer shadow-[0_8px_8px_rgba(0,0,0,0.3)]"
+                       className="w-14 h-14 bg-[#a78bfa] rounded-full flex items-center justify-center hover:scale-105 hover:bg-[#7c3aed] transition-all cursor-pointer shadow-[0_8px_8px_rgba(0,0,0,0.3)]"
                        onClick={() => {
                           if (artistTopTracks.length > 0) {
                               setQueue(artistTopTracks);
@@ -2420,7 +2420,7 @@ export default function MelodyStreamDashboard() {
                                 {queue === artistTopTracks && currentTrackIndex === i && isPlaying ? (
                                      <EqualizerIcon />
                                 ) : (
-                                     <span className={queue === artistTopTracks && currentTrackIndex === i ? "text-[#1db954]" : ""}>{i + 1}</span>
+                                     <span className={queue === artistTopTracks && currentTrackIndex === i ? "text-[#8b5cf6]" : ""}>{i + 1}</span>
                                 )}
                               </div>
                               <div className="w-8 text-center hidden group-hover:block">
@@ -2428,7 +2428,7 @@ export default function MelodyStreamDashboard() {
                               </div>
                               <img src={item.coverUrl} className="w-10 h-10 rounded mr-4 object-cover shadow-sm" alt="" />
                               <div className="flex-1 flex flex-col">
-                                 <span className={`hover:underline truncate text-[15px] ${queue === artistTopTracks && currentTrackIndex === i ? "text-[#1db954]" : "text-white"}`}>{item.title}</span>
+                                 <span className={`hover:underline truncate text-[15px] ${queue === artistTopTracks && currentTrackIndex === i ? "text-[#8b5cf6]" : "text-white"}`}>{item.title}</span>
                               </div>
                               <div className="flex-1 text-[#b3b3b3] text-sm hidden md:block">
                                   {getMonthlyListeners(item.artist)} listeners
@@ -2454,7 +2454,7 @@ export default function MelodyStreamDashboard() {
                                  <ListPlus className="w-5 h-5" />
                               </button>
                               <button 
-                                className={`${likedTracks.some(t => t.id === item.id) ? 'text-[#1db954]' : 'text-[#b3b3b3] hover:text-white'} mr-4 transition-transform hover:scale-105 opacity-0 group-hover:opacity-100 ${likedTracks.some(t => t.id === item.id) ? 'opacity-100' : ''}`}
+                                className={`${likedTracks.some(t => t.id === item.id) ? 'text-[#8b5cf6]' : 'text-[#b3b3b3] hover:text-white'} mr-4 transition-transform hover:scale-105 opacity-0 group-hover:opacity-100 ${likedTracks.some(t => t.id === item.id) ? 'opacity-100' : ''}`}
                                 onClick={(e) => {
                                    e.stopPropagation();
                                    toggleLike(item);
@@ -2674,12 +2674,12 @@ export default function MelodyStreamDashboard() {
                     <h3 className="text-lg font-bold text-white mb-4">Now playing</h3>
                     {currentTrack ? (
                        <div className="flex items-center gap-4 p-2 rounded-md hover:bg-[#1a1a1a] transition-colors group">
-                           <div className="w-8 flex justify-center text-[#1db954]">
+                           <div className="w-8 flex justify-center text-[#8b5cf6]">
                               {isPlaying ? <EqualizerIcon /> : <span>1</span>}
                            </div>
                            <img src={currentTrack.coverUrl} className="w-10 h-10 rounded object-cover shadow-sm" alt="" />
                            <div className="flex-1 flex flex-col">
-                              <span className="text-[#1db954] hover:underline cursor-pointer truncate text-[15px]">{currentTrack.title}</span>
+                              <span className="text-[#8b5cf6] hover:underline cursor-pointer truncate text-[15px]">{currentTrack.title}</span>
                               <span 
                                    className="text-[#b3b3b3] hover:text-white hover:underline truncate text-sm cursor-pointer"
                                    onClick={(e) => {
@@ -2772,7 +2772,7 @@ export default function MelodyStreamDashboard() {
                       </span>
                   </div>
                   <button 
-                    className={`${likedTracks.some(t => t.id === currentTrack.id) ? 'text-[#1db954]' : 'text-[#b3b3b3] hover:text-white'} ml-2 flex-shrink-0 transition-transform hover:scale-105`}
+                    className={`${likedTracks.some(t => t.id === currentTrack.id) ? 'text-[#8b5cf6]' : 'text-[#b3b3b3] hover:text-white'} ml-2 flex-shrink-0 transition-transform hover:scale-105`}
                     onClick={() => toggleLike(currentTrack)}
                   >
                       <Heart className={`w-5 h-5 ${likedTracks.some(t => t.id === currentTrack.id) ? 'fill-current' : ''}`} />
@@ -2786,7 +2786,7 @@ export default function MelodyStreamDashboard() {
           <div className="flex items-center gap-5 mb-1">
             <button 
               onClick={toggleShuffle}
-              className={`transition-colors hover:scale-105 ${isShuffled ? 'text-[#1db954] relative after:content-[""] after:absolute after:w-1 after:h-1 after:bg-[#1db954] after:rounded-full after:-bottom-2 after:left-1/2 after:-translate-x-1/2' : 'text-[#b3b3b3] hover:text-white'}`}
+              className={`transition-colors hover:scale-105 ${isShuffled ? 'text-[#8b5cf6] relative after:content-[""] after:absolute after:w-1 after:h-1 after:bg-[#8b5cf6] after:rounded-full after:-bottom-2 after:left-1/2 after:-translate-x-1/2' : 'text-[#b3b3b3] hover:text-white'}`}
             >
                <Shuffle className="w-4 h-4" />
             </button>
@@ -2815,7 +2815,7 @@ export default function MelodyStreamDashboard() {
             </button>
              <button 
                onClick={toggleRepeat}
-               className={`transition-colors hover:scale-105 ${repeatMode !== 'off' ? 'text-[#1db954] relative after:content-[""] after:absolute after:w-1 after:h-1 after:bg-[#1db954] after:rounded-full after:-bottom-2 after:left-1/2 after:-translate-x-1/2' : 'text-[#b3b3b3] hover:text-white'}`}
+               className={`transition-colors hover:scale-105 ${repeatMode !== 'off' ? 'text-[#8b5cf6] relative after:content-[""] after:absolute after:w-1 after:h-1 after:bg-[#8b5cf6] after:rounded-full after:-bottom-2 after:left-1/2 after:-translate-x-1/2' : 'text-[#b3b3b3] hover:text-white'}`}
              >
                {repeatMode === 'one' ? <Repeat1 className="w-4 h-4" /> : <Repeat className="w-4 h-4" />}
             </button>
@@ -2831,9 +2831,9 @@ export default function MelodyStreamDashboard() {
               onChange={handleSeek}
               onMouseEnter={() => setIsProgressHovered(true)}
               onMouseLeave={() => setIsProgressHovered(false)}
-              className="spotify-range w-full"
+              className="melodystream-range w-full"
               style={{
-                 background: `linear-gradient(to right, ${isProgressHovered ? '#1db954' : '#fff'} ${duration ? (progress / duration) * 100 : 0}%, #4d4d4d ${duration ? (progress / duration) * 100 : 0}%)`
+                 background: `linear-gradient(to right, ${isProgressHovered ? '#8b5cf6' : '#fff'} ${duration ? (progress / duration) * 100 : 0}%, #4d4d4d ${duration ? (progress / duration) * 100 : 0}%)`
               }}
             />
             <span className="w-10">{formatTime(duration)}</span>
@@ -2851,21 +2851,21 @@ export default function MelodyStreamDashboard() {
             onChange={handleVolume}
             onMouseEnter={() => setIsVolumeHovered(true)}
             onMouseLeave={() => setIsVolumeHovered(false)}
-            className="spotify-range w-24"
+            className="melodystream-range w-24"
             style={{
-               background: `linear-gradient(to right, ${isVolumeHovered ? '#1db954' : '#fff'} ${volume * 100}%, #4d4d4d ${volume * 100}%)`
+               background: `linear-gradient(to right, ${isVolumeHovered ? '#8b5cf6' : '#fff'} ${volume * 100}%, #4d4d4d ${volume * 100}%)`
             }}
           />
           <button
             onClick={() => navigateTo('queue')}
-            className={`transition-colors p-1 rounded-full ${activeTab === 'queue' ? 'text-[#1db954]' : 'text-[#b3b3b3] hover:text-white'}`}
+            className={`transition-colors p-1 rounded-full ${activeTab === 'queue' ? 'text-[#8b5cf6]' : 'text-[#b3b3b3] hover:text-white'}`}
             title="Queue"
           >
              <ListMusic className="w-5 h-5" />
           </button>
           <button 
             onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)} 
-            className={`transition-colors p-1 rounded-full ${isRightSidebarOpen ? 'text-[#1db954]' : 'text-[#b3b3b3] hover:text-white'}`}
+            className={`transition-colors p-1 rounded-full ${isRightSidebarOpen ? 'text-[#8b5cf6]' : 'text-[#b3b3b3] hover:text-white'}`}
           >
             <PanelRightClose className="w-5 h-5" />
           </button>
@@ -2887,7 +2887,7 @@ export default function MelodyStreamDashboard() {
           <div className="flex items-center gap-3 shrink-0 pr-2">
             <button 
               onClick={(e) => { e.stopPropagation(); toggleLike(currentTrack); }}
-              className={`${likedTracks.some(t => t.id === currentTrack.id) ? 'text-[#1db954]' : 'text-white'}`}
+              className={`${likedTracks.some(t => t.id === currentTrack.id) ? 'text-[#8b5cf6]' : 'text-white'}`}
             >
               <Heart className={`w-5 h-5 ${likedTracks.some(t => t.id === currentTrack.id) ? 'fill-current' : ''}`} />
             </button>
@@ -2966,7 +2966,7 @@ export default function MelodyStreamDashboard() {
                   </div>
                   <button 
                      onClick={() => toggleLike(currentTrack)}
-                     className={`${likedTracks.some(t => t.id === currentTrack.id) ? 'text-[#1db954]' : 'text-white'} mb-1`}
+                     className={`${likedTracks.some(t => t.id === currentTrack.id) ? 'text-[#8b5cf6]' : 'text-white'} mb-1`}
                   >
                      <Heart className={`w-7 h-7 ${likedTracks.some(t => t.id === currentTrack.id) ? 'fill-current' : ''}`} />
                   </button>
@@ -2998,7 +2998,7 @@ export default function MelodyStreamDashboard() {
                </div>
 
                <div className="flex justify-between items-center mb-8 px-2">
-                  <button onClick={toggleShuffle} className={`${isShuffled ? 'text-[#1db954]' : 'text-white'}`}>
+                  <button onClick={toggleShuffle} className={`${isShuffled ? 'text-[#8b5cf6]' : 'text-white'}`}>
                      <Shuffle className="w-6 h-6" />
                   </button>
                   <button onClick={handlePrev} className="text-white">
@@ -3010,9 +3010,9 @@ export default function MelodyStreamDashboard() {
                   <button onClick={() => handleNext(false)} className="text-white">
                      <SkipForward className="w-10 h-10 fill-current" />
                   </button>
-                  <button onClick={toggleRepeat} className={`${repeatMode !== 'off' ? 'text-[#1db954]' : 'text-white'} relative`}>
+                  <button onClick={toggleRepeat} className={`${repeatMode !== 'off' ? 'text-[#8b5cf6]' : 'text-white'} relative`}>
                      {repeatMode === 'one' ? <Repeat1 className="w-6 h-6" /> : <Repeat className="w-6 h-6" />}
-                     {repeatMode !== 'off' && <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-[#1db954] rounded-full"></div>}
+                     {repeatMode !== 'off' && <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-[#8b5cf6] rounded-full"></div>}
                   </button>
                </div>
 
@@ -3113,11 +3113,11 @@ export default function MelodyStreamDashboard() {
 
        {/* Beautiful Spotify-style Toast Notification Banner */}
        {toastNotification && (
-         <div id="spotify-custom-toast" className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[300] flex items-center gap-3 bg-[#282828] text-white px-5 py-3 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.5)] border border-[#ffffff1a] animate-fade-in pointer-events-none transition-all duration-300">
+         <div id="melodystream-custom-toast" className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[300] flex items-center gap-3 bg-[#282828] text-white px-5 py-3 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.5)] border border-[#ffffff1a] animate-fade-in pointer-events-none transition-all duration-300">
            {toastNotification.type === 'error' ? (
              <div className="w-5 h-5 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center font-bold text-[12px]">!</div>
            ) : toastNotification.type === 'success' ? (
-             <BadgeCheck className="w-5 h-5 text-[#1ed760]" />
+             <BadgeCheck className="w-5 h-5 text-[#a78bfa]" />
            ) : (
              <div className="w-5 h-5 rounded-full bg-[#509bf5]/20 text-[#509bf5] flex items-center justify-center font-bold text-[12px]">i</div>
            )}
@@ -3220,7 +3220,7 @@ export default function MelodyStreamDashboard() {
                 </div>
                 <div>
                    <span className="text-xs text-[#b3b3b3] block uppercase tracking-wider">Account Creation Status</span>
-                   <span className="text-[13px] text-[#1ed760] font-medium block mt-0.5">🟢 Connected to Firestore Secure Storage</span>
+                   <span className="text-[13px] text-[#a78bfa] font-medium block mt-0.5">🟢 Connected to Firestore Secure Storage</span>
                 </div>
               </div>
 
@@ -3236,7 +3236,7 @@ export default function MelodyStreamDashboard() {
                 </button>
                 <button
                   onClick={() => setIsAccountModalOpen(false)}
-                  className="px-6 py-2.5 rounded-full bg-[#1ed760] text-black font-bold hover:scale-105 transition-transform text-sm"
+                  className="px-6 py-2.5 rounded-full bg-[#a78bfa] text-black font-bold hover:scale-105 transition-transform text-sm"
                 >
                   Close Overview
                 </button>
@@ -3359,7 +3359,7 @@ export default function MelodyStreamDashboard() {
                     <button
                       type="submit"
                       disabled={isSubmittingSupport}
-                      className="px-6 py-2 rounded-full bg-[#1ed760] text-black font-bold hover:scale-105 transition-transform text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                      className="px-6 py-2 rounded-full bg-[#a78bfa] text-black font-bold hover:scale-105 transition-transform text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                     >
                       {isSubmittingSupport && <Loader2 className="w-4 h-4 animate-spin" />}
                       Submit Request
@@ -3368,7 +3368,7 @@ export default function MelodyStreamDashboard() {
                 </form>
               ) : (
                 <div className="text-center py-6">
-                  <div className="w-16 h-16 bg-[#1ed760]/10 text-[#1ed760] rounded-full flex items-center justify-center mx-auto mb-4 scale-up">
+                  <div className="w-16 h-16 bg-[#a78bfa]/10 text-[#a78bfa] rounded-full flex items-center justify-center mx-auto mb-4 scale-up">
                     <BadgeCheck className="w-10 h-10" />
                   </div>
                   <h3 className="text-2xl font-bold text-white mb-2 animate-fade-in">Request Submitted Successfully</h3>
@@ -3380,7 +3380,7 @@ export default function MelodyStreamDashboard() {
                       setIsSupportModalOpen(false);
                       setSupportSubmitted(false);
                     }}
-                    className="px-6 py-2.5 rounded-full bg-[#1ed760] text-black font-bold hover:scale-105 transition-all text-sm"
+                    className="px-6 py-2.5 rounded-full bg-[#a78bfa] text-black font-bold hover:scale-105 transition-all text-sm"
                   >
                     Return to Player
                   </button>
@@ -3441,7 +3441,7 @@ export default function MelodyStreamDashboard() {
                       setCrossfade(Number(e.target.value));
                       localStorage.setItem('crossfade', e.target.value);
                     }}
-                    className="w-28 accent-[#1ed760]"
+                    className="w-28 accent-[#a78bfa]"
                   />
                 </div>
 
@@ -3456,7 +3456,7 @@ export default function MelodyStreamDashboard() {
                       setAutoplay(val);
                       localStorage.setItem('autoplay', String(val));
                     }}
-                    className={`w-11 h-6 rounded-full transition-colors relative flex items-center ${autoplay ? 'bg-[#1ed760]' : 'bg-[#404040]'}`}
+                    className={`w-11 h-6 rounded-full transition-colors relative flex items-center ${autoplay ? 'bg-[#a78bfa]' : 'bg-[#404040]'}`}
                   >
                     <span className={`w-4 h-4 rounded-full bg-white transition-transform absolute ${autoplay ? 'right-1' : 'left-1'}`} />
                   </button>
@@ -3483,7 +3483,7 @@ export default function MelodyStreamDashboard() {
               <div className="flex justify-end mt-8 pt-4 border-t border-[#282828]">
                 <button
                   onClick={() => setIsSettingsModalOpen(false)}
-                  className="px-6 py-2 bg-[#1ed760] text-black rounded-full font-bold hover:scale-105 transition-transform text-sm"
+                  className="px-6 py-2 bg-[#a78bfa] text-black rounded-full font-bold hover:scale-105 transition-transform text-sm"
                 >
                   Save & Apply Settings
                 </button>

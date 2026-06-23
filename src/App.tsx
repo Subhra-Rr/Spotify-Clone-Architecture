@@ -100,7 +100,7 @@ function FirebaseAuthScreen({ onAuthSuccess }: { onAuthSuccess: () => void }) {
     <div className="flex flex-col h-screen bg-black items-center justify-center font-sans">
       <div className="bg-[#121212] p-8 sm:p-12 rounded-lg w-full max-w-md shadow-2xl mx-4">
         <div className="flex justify-center mb-8">
-          <Music className="w-16 h-16 text-[#1db954]" />
+          <Music className="w-16 h-16 text-[#8b5cf6]" />
         </div>
         <h1 className="text-3xl font-bold text-white tracking-tight mb-8 text-center font-sans">
           {isLogin ? "Log in to MelodyStream" : "Sign up for MelodyStream"}
@@ -200,13 +200,13 @@ function FirebaseAuthScreen({ onAuthSuccess }: { onAuthSuccess: () => void }) {
               </div>
               
               <div className="flex flex-col gap-1.5">
-                <div className={`flex items-center gap-2 text-sm transition-colors ${hasMinLength ? 'text-[#1ed760]' : 'text-[#b3b3b3]'}`}>
+                <div className={`flex items-center gap-2 text-sm transition-colors ${hasMinLength ? 'text-[#a78bfa]' : 'text-[#b3b3b3]'}`}>
                   {hasMinLength ? <Check size={16} /> : <X size={16} />} At least 8 characters
                 </div>
-                <div className={`flex items-center gap-2 text-sm transition-colors ${hasNumber ? 'text-[#1ed760]' : 'text-[#b3b3b3]'}`}>
+                <div className={`flex items-center gap-2 text-sm transition-colors ${hasNumber ? 'text-[#a78bfa]' : 'text-[#b3b3b3]'}`}>
                   {hasNumber ? <Check size={16} /> : <X size={16} />} At least 1 number
                 </div>
-                <div className={`flex items-center gap-2 text-sm transition-colors ${hasSpecialChar ? 'text-[#1ed760]' : 'text-[#b3b3b3]'}`}>
+                <div className={`flex items-center gap-2 text-sm transition-colors ${hasSpecialChar ? 'text-[#a78bfa]' : 'text-[#b3b3b3]'}`}>
                   {hasSpecialChar ? <Check size={16} /> : <X size={16} />} At least 1 special character
                 </div>
               </div>
@@ -220,7 +220,7 @@ function FirebaseAuthScreen({ onAuthSuccess }: { onAuthSuccess: () => void }) {
                 setShowResetModal(true);
                 setResetEmail(email);
               }}
-              className="text-white hover:text-[#1ed760] font-bold text-sm text-left hover:underline mb-2 transition-colors self-start"
+              className="text-white hover:text-[#a78bfa] font-bold text-sm text-left hover:underline mb-2 transition-colors self-start"
             >
               Forgot your password?
             </button>
@@ -229,7 +229,7 @@ function FirebaseAuthScreen({ onAuthSuccess }: { onAuthSuccess: () => void }) {
           <button
             type="submit"
             disabled={!isLogin && !isPasswordValid}
-            className={`font-bold text-[15px] rounded-full py-3.5 mt-2 transition-all ${!isLogin && !isPasswordValid ? 'bg-[#1ed760]/50 text-black/50 cursor-not-allowed' : 'bg-[#1ed760] text-black hover:scale-105'}`}
+            className={`font-bold text-[15px] rounded-full py-3.5 mt-2 transition-all ${!isLogin && !isPasswordValid ? 'bg-[#8b5cf6]/50 text-white/50 cursor-not-allowed' : 'bg-[#8b5cf6] text-white hover:scale-105'}`}
           >
             {isLogin ? "Log In" : "Sign Up"}
           </button>
@@ -242,7 +242,7 @@ function FirebaseAuthScreen({ onAuthSuccess }: { onAuthSuccess: () => void }) {
               setIsLogin(!isLogin);
               setError("");
             }}
-            className="text-white hover:text-[#1ed760] hover:underline font-bold transition-colors"
+            className="text-white hover:text-[#a78bfa] hover:underline font-bold transition-colors"
           >
             {isLogin ? "Sign up for MelodyStream" : "Log in here"}
           </button>
@@ -283,7 +283,7 @@ function FirebaseAuthScreen({ onAuthSuccess }: { onAuthSuccess: () => void }) {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-full bg-[#1ed760] text-black font-bold hover:scale-105 transition-transform"
+                  className="px-6 py-2.5 rounded-full bg-[#8b5cf6] text-white font-bold hover:scale-105 transition-transform"
                 >
                   Send Link
                 </button>
@@ -309,7 +309,7 @@ function MelodyStreamAuthScreen() {
   return (
     <div className="flex flex-col h-screen bg-black items-center justify-center font-sans">
       <div className="flex flex-col items-center gap-8 max-w-lg text-center pl-4 pr-4">
-        <Music className="w-24 h-24 text-[#1db954]" />
+        <Music className="w-24 h-24 text-[#8b5cf6]" />
         <h1 className="text-4xl font-bold text-white tracking-tight">
           Connect Music Library
         </h1>
@@ -325,7 +325,7 @@ function MelodyStreamAuthScreen() {
         <div className="flex flex-col gap-4 w-full px-6">
           <button
             onClick={login}
-            className="w-full bg-[#1ed760] text-black font-bold text-lg rounded-full py-3.5 hover:scale-105 transition-transform"
+            className="w-full bg-[#8b5cf6] text-white font-bold text-lg rounded-full py-3.5 hover:scale-105 transition-transform"
           >
             Connect Account
           </button>
