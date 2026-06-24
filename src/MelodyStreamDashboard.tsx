@@ -42,8 +42,9 @@ interface FirestoreErrorInfo {
 }
 
 function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errMsg = error instanceof Error ? error.message : String(error);
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: errMsg,
     authInfo: {
       userId: auth.currentUser?.uid,
       email: auth.currentUser?.email,
@@ -58,8 +59,15 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
     operationType,
     path
   };
+  
   console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  
+  const isPermissionError = errMsg.toLowerCase().includes("permission") || errMsg.toLowerCase().includes("insufficient");
+  if (isPermissionError) {
+    throw new Error(JSON.stringify(errInfo));
+  } else {
+    console.warn("Handled non-permission Firestore warning: " + errMsg);
+  }
 }
 
 const getProfileImage = (user: User | null) => {
@@ -292,6 +300,35 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
   const [ytVideoId, setYtVideoId] = useState<string>('');
   const [isPremium, setIsPremium] = useState(false);
 
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    onConfirm: () => void;
+  } | null>(null);
+
+  const triggerConfirm = (
+    title: string,
+    message: string,
+    onConfirm: () => void,
+    confirmText = 'Confirm',
+    cancelText = 'Cancel'
+  ) => {
+    setConfirmDialog({
+      isOpen: true,
+      title,
+      message,
+      confirmText,
+      cancelText,
+      onConfirm: () => {
+        onConfirm();
+        setConfirmDialog(null);
+      }
+    });
+  };
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const ytPlayerRef = useRef<any>(null);
   const playPauseRef = useRef<{ isPlaying: boolean; currentTrack: Track | undefined }>({ isPlaying: false, currentTrack: undefined });
@@ -347,17 +384,25 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
   }, []);
 
   const toggleLike = (track: Track) => {
-     let updatedLikes;
-     if (likedTracks.some(t => t.id === track.id)) {
-        if (!window.confirm(`Are you sure you want to remove "${track.title}" from your liked songs?`)) return;
-        updatedLikes = likedTracks.filter(t => t.id !== track.id);
-     } else {
-        updatedLikes = [track, ...likedTracks];
-     }
-     setLikedTracks(updatedLikes);
-     try {
-       localStorage.setItem('spotify-clone-liked-tracks', JSON.stringify(updatedLikes));
-     } catch(e) {}
+    if (likedTracks.some(t => t.id === track.id)) {
+      triggerConfirm(
+        "Remove from Liked Songs",
+        `Are you sure you want to remove "${track.title}" from your liked songs?`,
+        () => {
+          const updatedLikes = likedTracks.filter(t => t.id !== track.id);
+          setLikedTracks(updatedLikes);
+          try {
+            localStorage.setItem('spotify-clone-liked-tracks', JSON.stringify(updatedLikes));
+          } catch(e) {}
+        }
+      );
+    } else {
+      const updatedLikes = [track, ...likedTracks];
+      setLikedTracks(updatedLikes);
+      try {
+        localStorage.setItem('spotify-clone-liked-tracks', JSON.stringify(updatedLikes));
+      } catch(e) {}
+    }
   };
 
   const addToRecentQueries = (queryText: string) => {
@@ -2201,45 +2246,54 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                       </button>
                       <button 
                          className="text-[#b3b3b3] hover:text-[#e91429] transition-colors"
-                         onClick={async () => {
-                                                         if (false) {
-                                if (window.confirm('Delete/clear all songs from "My Uploads"? This cannot be undone.')) {
-                                    setPlaylists(prev => prev.filter(p => p.id !== pl.id));
-                                    if (firebaseUser) {
-                                       try {
-                                          const q = query(collection(db, 'users', firebaseUser.uid, 'likedSongs'));
-                                          getDocs(q).then(sn => {
-                                             sn.docs.forEach(doc => {
-                                                 deleteDoc(doc.ref).catch(err => console.error("Error deleting song doc", err));
-                                             });
-                                          });
-                                          deleteDoc(doc(db, 'users', firebaseUser.uid, 'playlists', 'uploads_metadata')).catch(err => console.warn(err));
-                                       } catch (err) {
-                                          console.error("Failed to clear Uploads playlist", err);
-                                       }
-                                    }
-                                    navigateTo('home');
-                                }
-                             } else {
-                                if (window.confirm(`Are you sure you want to delete the playlist "${pl.name}"?`)) {
-                                    setPlaylists(prev => {
-                                       const updated = prev.filter(p => p.id !== pl.id);
-                                       if (firebaseUser?.uid === 'guest_user') {
-                                          localStorage.setItem('spotify-clone-guest-playlists', JSON.stringify(updated.filter(p => p.id !== 'liked')));
-                                       }
-                                       return updated;
-                                    });
-                                    if (firebaseUser && firebaseUser.uid !== 'guest_user') {
-                                       try {
-                                          deleteDoc(doc(db, 'users', firebaseUser.uid, 'playlists', pl.id)).catch(err => console.error(err));
-                                       } catch (err) {
-                                          console.error("Failed to delete custom playlist from Firestore", err);
-                                       }
-                                    }
-                                    navigateTo('home');
-                                 }
-                              }}}
-                          title="Delete Playlist"
+                         onClick={() => {
+                            if (pl.id === 'uploads') {
+                               triggerConfirm(
+                                  'Clear Uploads',
+                                  'Delete/clear all songs from "My Uploads"? This cannot be undone.',
+                                  () => {
+                                     setPlaylists(prev => prev.filter(p => p.id !== pl.id));
+                                     if (firebaseUser) {
+                                        try {
+                                           const q = query(collection(db, 'users', firebaseUser.uid, 'likedSongs'));
+                                           getDocs(q).then(sn => {
+                                              sn.docs.forEach(doc => {
+                                                  deleteDoc(doc.ref).catch(err => console.error("Error deleting song doc", err));
+                                              });
+                                           });
+                                           deleteDoc(doc(db, 'users', firebaseUser.uid, 'playlists', 'uploads_metadata')).catch(err => console.warn(err));
+                                        } catch (err) {
+                                           console.error("Failed to clear Uploads playlist", err);
+                                        }
+                                     }
+                                     navigateTo('home');
+                                  }
+                               );
+                            } else {
+                               triggerConfirm(
+                                  'Delete Playlist',
+                                  `Are you sure you want to delete the playlist "${pl.name}"?`,
+                                  () => {
+                                     setPlaylists(prev => {
+                                        const updated = prev.filter(p => p.id !== pl.id);
+                                        if (firebaseUser?.uid === 'guest_user') {
+                                           localStorage.setItem('spotify-clone-guest-playlists', JSON.stringify(updated.filter(p => p.id !== 'liked')));
+                                        }
+                                        return updated;
+                                     });
+                                     if (firebaseUser && firebaseUser.uid !== 'guest_user') {
+                                        try {
+                                           deleteDoc(doc(db, 'users', firebaseUser.uid, 'playlists', pl.id)).catch(err => console.error(err));
+                                        } catch (err) {
+                                           console.error("Failed to delete custom playlist from Firestore", err);
+                                        }
+                                     }
+                                     navigateTo('home');
+                                  }
+                               );
+                            }
+                         }}
+                         title="Delete Playlist"
                       >
                          <Trash2 className="w-8 h-8" />
                       </button>
@@ -2291,33 +2345,13 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                                <div className="flex items-center gap-4">
                                   <button 
                                     className="text-[#b3b3b3] hover:text-[#e91429] transition-colors p-2"
-                                    onClick={async (e) => {
+                                    onClick={(e) => {
                                        e.stopPropagation();
-                                       if (!window.confirm("Are you sure you want to remove this song?")) return;
-                                       
-                                       if (false) {
-                                           if (firebaseUser) {
-                                               try {
-                                                   await deleteDoc(doc(db, 'users', firebaseUser.uid, 'likedSongs', item.id));
-                                               } catch (err) {
-                                                   console.error("Failed to delete song from Firestore", err);
-                                               }
-                                           }
-                                           setPlaylists(prev => prev.map(p => {
-                                              if (p.id === 'uploads') {
-                                                 const filteredItems = p.tracks.items?.filter((_, index) => index !== i) || [];
-                                                 return {
-                                                    ...p,
-                                                    tracks: {
-                                                       ...p.tracks,
-                                                       total: filteredItems.length,
-                                                       items: filteredItems
-                                                    }
-                                                 };
-                                              }
-                                              return p;
-                                           }));
-                                       } else {
+                                       triggerConfirm(
+                                          'Remove Song',
+                                          'Are you sure you want to remove this song?',
+                                          () => {
+
                                            setPlaylists(prev => prev.map(p => {
                                               if (p.id === pl.id) {
                                                  const filteredItems = p.tracks.items?.filter((_, index) => index !== i) || [];
@@ -2340,8 +2374,9 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                                                }
                                                return p;
                                             }));
-                                        }
-                                     }}
+                                         }
+                                      );
+                                   }}
                                     title="Remove from Playlist"
                                   >
                                      <X className="w-5 h-5" />
@@ -2551,25 +2586,29 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                   <div className="mt-12">
                      <h2 className="text-2xl font-bold text-white mb-6">Account Settings</h2>
                      <button
-                        onClick={async () => {
-                           if (window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
-                              if (firebaseUser?.uid === 'guest_user') {
-                                 localStorage.removeItem('spotify-clone-guest-playlists');
-                                 localStorage.removeItem('spotify-clone-liked-tracks');
-                                 localStorage.removeItem('spotify-clone-search-history');
-                                 localStorage.removeItem('spotify-clone-recent-queries');
-                                 showToast("Guest profile cleared successfully.", "success");
-                                 if (onLogout) onLogout();
-                                 return;
+                        onClick={() => {
+                           triggerConfirm(
+                              "Delete Account",
+                              "Are you sure you want to delete your account? This action cannot be undone.",
+                              async () => {
+                                 if (firebaseUser?.uid === 'guest_user') {
+                                    localStorage.removeItem('spotify-clone-guest-playlists');
+                                    localStorage.removeItem('spotify-clone-liked-tracks');
+                                    localStorage.removeItem('spotify-clone-search-history');
+                                    localStorage.removeItem('spotify-clone-recent-queries');
+                                    showToast("Guest profile cleared successfully.", "success");
+                                    if (onLogout) onLogout();
+                                    return;
+                                 }
+                                 try {
+                                    await firebaseUser?.delete();
+                                    showToast("Your account was successfully deleted.", "success");
+                                    if (onLogout) onLogout();
+                                 } catch (e: any) {
+                                    showToast("Error deleting account: " + (e?.message || String(e)), "error");
+                                 }
                               }
-                              try {
-                                 await firebaseUser?.delete();
-                                 showToast("Your account was successfully deleted.", "success");
-                                 if (onLogout) onLogout();
-                              } catch (e: any) {
-                                 showToast("Error deleting account: " + (e?.message || String(e)), "error");
-                              }
-                           }
+                           );
                         }}
                         className="bg-transparent border border-red-500 text-red-500 hover:bg-red-500 hover:text-white px-6 py-2 rounded-full font-bold text-sm transition-colors"
                      >
@@ -3561,6 +3600,32 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
             </div>
          </div>
       )}
+
+       {confirmDialog && confirmDialog.isOpen && (
+          <div id="custom-confirm-modal" className="fixed inset-0 bg-black/80 z-[300] flex items-center justify-center p-4 backdrop-blur-sm">
+             <div className="bg-[#282828] rounded-lg w-full max-w-sm p-6 relative animate-fade-in border border-[#3e3e3e] shadow-2xl">
+                <h3 className="text-xl font-bold text-white mb-2">{confirmDialog.title}</h3>
+                <p className="text-[#b3b3b3] text-sm mb-6">{confirmDialog.message}</p>
+                
+                <div className="flex justify-end gap-3">
+                   <button
+                      id="confirm-modal-cancel-btn"
+                      onClick={() => setConfirmDialog(null)}
+                      className="bg-transparent hover:bg-white/10 text-white font-bold py-2 px-5 rounded-full transition-colors text-sm"
+                   >
+                      {confirmDialog.cancelText || 'Cancel'}
+                   </button>
+                   <button
+                      id="confirm-modal-ok-btn"
+                      onClick={confirmDialog.onConfirm}
+                      className="bg-[#8b5cf6] hover:bg-[#a78bfa] text-white font-bold py-2 px-5 rounded-full transition-colors text-sm"
+                   >
+                      {confirmDialog.confirmText || 'Confirm'}
+                   </button>
+                </div>
+             </div>
+          </div>
+       )}
     </div>
   );
 }
