@@ -183,7 +183,7 @@ const MELODYSTREAM_BROWSE_ALL = [
   { id: 'c-podcharts', title: 'Podcast Charts', color: '#006450', coverUrl: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=300&h=300&fit=crop' },
 ];
 
-export default function MelodyStreamDashboard() {
+export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => void }) {
   const { accessToken, logout } = useAuth();
   const { enhanceTracks, enhanceTrack } = useAudioDB();
   
@@ -1578,6 +1578,7 @@ export default function MelodyStreamDashboard() {
                             setIsProfileMenuOpen(false);
                             logout();
                             signOut(auth);
+                            if (onLogout) onLogout();
                           }}
                           className="w-full text-left px-4 py-3 hover:bg-[#3e3e3e] transition-colors"
                         >
@@ -2551,10 +2552,20 @@ export default function MelodyStreamDashboard() {
                      <h2 className="text-2xl font-bold text-white mb-6">Account Settings</h2>
                      <button
                         onClick={async () => {
-                           if (window.confirm("are you sure to delete your account? This action cannot be undone.")) {
+                           if (window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
+                              if (firebaseUser?.uid === 'guest_user') {
+                                 localStorage.removeItem('spotify-clone-guest-playlists');
+                                 localStorage.removeItem('spotify-clone-liked-tracks');
+                                 localStorage.removeItem('spotify-clone-search-history');
+                                 localStorage.removeItem('spotify-clone-recent-queries');
+                                 showToast("Guest profile cleared successfully.", "success");
+                                 if (onLogout) onLogout();
+                                 return;
+                              }
                               try {
                                  await firebaseUser?.delete();
                                  showToast("Your account was successfully deleted.", "success");
+                                 if (onLogout) onLogout();
                               } catch (e: any) {
                                  showToast("Error deleting account: " + (e?.message || String(e)), "error");
                               }
@@ -3135,7 +3146,8 @@ export default function MelodyStreamDashboard() {
          onEnded={() => handleNext(true)}
          onVolumeChange={() => setVolume(audioRef.current?.volume || 1)}
          onError={(e) => {
-            console.error("Audio src stream failed to load/play:", audioRef.current?.src, e);
+            const errorDetails = e.currentTarget.error ? `Code: ${e.currentTarget.error.code}, Message: ${e.currentTarget.error.message}` : "Playback error";
+            console.error("Audio src stream failed to load/play:", audioRef.current?.src, errorDetails);
             const currentTracks = stateRef.current.queue;
             const currentIndex = stateRef.current.currentTrackIndex;
             const currentTrack = currentTracks[currentIndex];

@@ -14,7 +14,7 @@ import {
 } from "firebase/auth";
 
 // Firebase Auth Screen Component
-function FirebaseAuthScreen({ onAuthSuccess }: { onAuthSuccess: () => void }) {
+function FirebaseAuthScreen({ onAuthSuccess, onContinueAsGuest }: { onAuthSuccess: () => void; onContinueAsGuest: () => void }) {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -235,6 +235,19 @@ function FirebaseAuthScreen({ onAuthSuccess }: { onAuthSuccess: () => void }) {
           </button>
         </form>
 
+        <div className="flex items-center gap-4 mb-4 mt-2">
+          <div className="h-px bg-[#282828] flex-1"></div>
+          <span className="text-[#878787] text-xs">or</span>
+          <div className="h-px bg-[#282828] flex-1"></div>
+        </div>
+
+        <button
+          onClick={onContinueAsGuest}
+          className="w-full bg-transparent border border-[#8b5cf6]/50 hover:border-[#8b5cf6] text-white/90 hover:text-white font-semibold text-[15px] rounded-full py-3 mb-6 hover:bg-[#8b5cf6]/10 transition-all flex items-center justify-center gap-2"
+        >
+          Continue as Guest / Local Player
+        </button>
+
         <div className="text-center text-[#878787] text-[15px]">
           {isLogin ? "Don't have an account? " : "Already have an account? "}
           <button
@@ -358,21 +371,39 @@ function MainLayout() {
       setFirebaseUser(user);
       setLoading(false);
     });
-    return unsubscribe;
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
+
+  const handleContinueAsGuest = () => {
+    setFirebaseUser({
+      uid: 'guest_user',
+      displayName: 'Local Guest',
+      email: 'guest@example.com',
+      photoURL: null,
+      delete: async () => {},
+    } as any);
+  };
+
+  const handleLogout = () => {
+    setFirebaseUser(null);
+  };
 
   if (loading)
     return (
-      <div className="h-screen bg-black flex items-center justify-center text-white">
-        Loading...
+      <div className="h-screen bg-black flex flex-col items-center justify-center text-white font-sans gap-4">
+        <Music className="w-12 h-12 text-[#8b5cf6] animate-pulse" />
+        <span className="text-sm font-medium text-[#b3b3b3] tracking-wide">Loading MelodyStream...</span>
       </div>
     );
 
   if (!firebaseUser) {
-    return <FirebaseAuthScreen onAuthSuccess={() => {}} />;
+    return <FirebaseAuthScreen onAuthSuccess={() => {}} onContinueAsGuest={handleContinueAsGuest} />;
   }
 
-  return <MelodyStreamDashboard />;
+  return <MelodyStreamDashboard onLogout={handleLogout} />;
 }
 
 export default function App() {

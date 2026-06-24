@@ -97,11 +97,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
          throw new Error("Invalid response from auth endpoint: " + rawText);
       }
       
-      console.log("Opening OAuth popup directly to provider:", url);
-      const authWindow = window.open(url, 'melodystream_oauth', 'width=600,height=700');
-      if (!authWindow) {
-         console.warn("Popup blocked! Please allow popups to sign in to MelodyStream.");
-      }
+      console.log("Redirecting to OAuth provider in the current window:", url);
+      window.location.href = url;
     } catch (e: any) {
       console.error("Failed to login", e.message || e);
     }

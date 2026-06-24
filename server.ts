@@ -4,6 +4,16 @@ import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import YTMusic from "ytmusic-api";
 
+// Fix tsx __dirname issue where globalThis.__dirname is set to "."
+// This is critical because some third-party packages like vite-plugin-pwa check
+// typeof __dirname and fail if it is configured as "."
+if (globalThis.__dirname === ".") {
+  delete (globalThis as any).__dirname;
+}
+if ((global as any).__dirname === ".") {
+  delete (global as any).__dirname;
+}
+
 dotenv.config();
 
 const app = express();
@@ -415,8 +425,16 @@ app.get("/api/callback", async (req, res) => {
           localStorage.setItem('melodystream_access_token', '${access_token}');
           localStorage.setItem('melodystream_refresh_token', '${refresh_token}');
           localStorage.setItem('melodystream_expires_at', '${expires_at}');
-          // If opened in popup, message opener. If redirected, redirect back
-          if (window.opener) {
+          let isPopup = false;
+          try {
+             if (window.opener && window.opener.location.origin === window.location.origin) {
+                isPopup = true;
+             }
+          } catch (e) {
+             isPopup = false;
+          }
+
+          if (isPopup) {
              window.opener.postMessage({ type: 'MELODYSTREAM_AUTH_SUCCESS', access_token: '${access_token}', refresh_token: '${refresh_token}', expires_in: ${expires_in} }, '*');
              window.close();
           } else {
