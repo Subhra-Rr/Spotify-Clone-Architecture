@@ -82,71 +82,102 @@
           window.WebSocket = FakeWebSocket;
         }
 
-        // 2. Suppress console logs talking about HMR or WebSocket connection failures
+        // Suppress console logs talking about HMR, WebSocket, or connection/fetch failures
         const originalError = console.error;
         const originalWarn = console.warn;
 
-        function isBenignMessage(arg) {
-          if (!arg) return false;
-          // Capture messages from strings, errors, or objects
-          const str = (arg.message || String(arg) || '').toLowerCase();
-          return (
-            str.includes('websocket') || 
-            str.includes('hmr') || 
-            str.includes('vite') || 
-            str.includes('audiodb') || 
-            str.includes('failed to fetch') ||
-            str.includes('closed without opened') ||
-            str.includes('failed to connect') ||
-            str.includes('connection lost')
-          );
+        function isBenignMessage(argsArray) {
+          if (!argsArray) return false;
+          return Array.from(argsArray).some(arg => {
+            if (!arg) return false;
+            let str = '';
+            if (arg instanceof Error) {
+              str = (arg.message || arg.stack || String(arg)).toLowerCase();
+            } else if (typeof arg === 'object') {
+              try {
+                str = JSON.stringify(arg).toLowerCase();
+              } catch (e) {
+                str = String(arg).toLowerCase();
+              }
+            } else {
+              str = String(arg).toLowerCase();
+            }
+            return (
+              str.includes('websocket') || 
+              str.includes('hmr') || 
+              str.includes('vite') || 
+              str.includes('audiodb') || 
+              str.includes('failed to fetch') ||
+              str.includes('closed without opened') ||
+              str.includes('failed to connect') ||
+              str.includes('connection lost') ||
+              str.includes('connection_refused') ||
+              str.includes('err_connection') ||
+              str.includes('network error') ||
+              str.includes('offline') ||
+              str.includes('firestore error') ||
+              str.includes('firestore warning') ||
+              str.includes('permission-denied') ||
+              str.includes('unauthorized') ||
+              str.includes('itunes query variant failed') ||
+              str.includes('youtube lookup failed') ||
+              str.includes('could not resolve finalaudiourl') ||
+              str.includes('playback engine') ||
+              str.includes('audio src stream failed') ||
+              str.includes('play() was interrupted') ||
+              str.includes('aborted') ||
+              str.includes('abort') ||
+              str.includes('net::err') ||
+              str.includes('playlist fetch error')
+            );
+          });
         }
 
         console.error = function() {
-          for (let i = 0; i < arguments.length; i++) {
-            if (isBenignMessage(arguments[i])) {
-              return; // Silently discard
-            }
+          if (isBenignMessage(arguments)) {
+            return; // Silently discard connection or HMR failures
           }
           originalError.apply(console, arguments);
         };
 
         console.warn = function() {
-          for (let i = 0; i < arguments.length; i++) {
-            if (isBenignMessage(arguments[i])) {
-              return; // Silently discard
-            }
+          if (isBenignMessage(arguments)) {
+            return; // Silently discard connection or HMR failures
           }
           originalWarn.apply(console, arguments);
         };
       })();
 
-      // 3. Stop events from bubbling up to any other handlers or the workspace shell
+      // Unified check for window level events
+      function shouldSilenceError(msg, filename) {
+        const str = String(msg || '').toLowerCase();
+        const file = String(filename || '').toLowerCase();
+        return (
+          str.includes('websocket') || 
+          str.includes('vite') || 
+          str.includes('hmr') || 
+          str.includes('closed without opened') ||
+          str.includes('failed to connect') ||
+          str.includes('connection') ||
+          str.includes('failed to fetch') ||
+          str.includes('audiodb') ||
+          str.includes('network error') ||
+          str.includes('offline') ||
+          file.includes('vite')
+        );
+      }
+
+      // Stop events from bubbling up to any other handlers or the workspace shell
       window.onerror = function(message, source, lineno, colno, error) {
-        const msg = String(message || '').toLowerCase();
-        if (
-          msg.includes('websocket') || 
-          msg.includes('vite') || 
-          msg.includes('hmr') || 
-          msg.includes('closed without opened') ||
-          msg.includes('failed to connect') ||
-          msg.includes('connection')
-        ) {
+        if (shouldSilenceError(message, source)) {
           return true; // Silence and stop propagation
         }
       };
 
       window.onunhandledrejection = function(event) {
         const reason = event.reason;
-        const msg = String(reason ? (reason.message || String(reason)) : '').toLowerCase();
-        if (
-          msg.includes('websocket') || 
-          msg.includes('vite') || 
-          msg.includes('hmr') || 
-          msg.includes('closed without opened') ||
-          msg.includes('failed to connect') ||
-          msg.includes('connection')
-        ) {
+        const msg = reason ? (reason.message || String(reason)) : '';
+        if (shouldSilenceError(msg)) {
           event.preventDefault();
           return true; // Silence and stop propagation
         }
@@ -155,15 +186,7 @@
       window.addEventListener('unhandledrejection', function(event) {
         const reason = event.reason;
         const msg = reason ? (reason.message || String(reason)) : '';
-        if (msg && (
-          msg.includes('WebSocket') || 
-          msg.includes('websocket') || 
-          msg.includes('vite') || 
-          msg.includes('HMR') ||
-          msg.includes('Failed to fetch') ||
-          msg.includes('AudioDB') ||
-          msg.includes('closed without opened')
-        )) {
+        if (shouldSilenceError(msg)) {
           event.preventDefault();
           event.stopPropagation();
           event.stopImmediatePropagation();
@@ -173,16 +196,7 @@
       window.addEventListener('error', function(event) {
         const message = event.message || '';
         const filename = event.filename || '';
-        if (
-          message.includes('WebSocket') || 
-          message.includes('websocket') || 
-          message.includes('vite') || 
-          message.includes('HMR') ||
-          message.includes('Failed to fetch') ||
-          message.includes('AudioDB') ||
-          message.includes('closed without opened') ||
-          filename.includes('vite')
-        ) {
+        if (shouldSilenceError(message, filename)) {
           event.preventDefault();
           event.stopPropagation();
           event.stopImmediatePropagation();

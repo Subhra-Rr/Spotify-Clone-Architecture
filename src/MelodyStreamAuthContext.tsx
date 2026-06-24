@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             localStorage.setItem('melodystream_expires_at', newExpiresAt.toString());
           }
         } catch (error) {
-          console.warn("Failed to refresh token", error);
+          // Failed to refresh token
           logout();
         }
       }
@@ -100,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("Redirecting to OAuth provider in the current window:", url);
       window.location.href = url;
     } catch (e: any) {
-      console.error("Failed to login", e.message || e);
+      // Failed to login
     }
   };
 

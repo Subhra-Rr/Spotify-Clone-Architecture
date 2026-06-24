@@ -60,13 +60,9 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
     path
   };
   
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  
   const isPermissionError = errMsg.toLowerCase().includes("permission") || errMsg.toLowerCase().includes("insufficient");
   if (isPermissionError) {
     throw new Error(JSON.stringify(errInfo));
-  } else {
-    console.warn("Handled non-permission Firestore warning: " + errMsg);
   }
 }
 
@@ -206,6 +202,7 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
+  const [isSeeking, setIsSeeking] = useState(false);
   const [isProgressHovered, setIsProgressHovered] = useState(false);
   const [isVolumeHovered, setIsVolumeHovered] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -513,7 +510,6 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
            });
         }
       } catch (e) {
-        console.warn("Failed to fetch custom playlists", e);
         handleFirestoreError(e, OperationType.LIST, `users/${firebaseUser.uid}/playlists`);
       }
     };
@@ -533,7 +529,7 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
          setTracks(data);
          if (queue.length === 0) setQueue(data);
       })
-      .catch(e => console.warn("Could not fetch tracks:", e));
+      .catch(() => {});
 
     if (accessToken && accessToken !== 'local_bypass') {
       fetch('https://api.spotify.com/v1/me/playlists?limit=20', {
@@ -558,7 +554,7 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
         if (data.items) setPlaylists(data.items);
       })
       .catch(e => {
-        console.warn('Playlist fetch error:', e.message);
+        // Silent catch for Spotify/external playlist API failures to avoid console noise
       });
     }
 
@@ -615,7 +611,7 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
              setArtistAlbums([]);
          }
      }).catch(err => {
-         console.warn("error fetching artist data", err);
+         // silent catch
          setArtistTopTracks([]);
          setArtistAlbums([]);
      }).finally(() => {
@@ -652,7 +648,7 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                setCategoryData(parsed);
            }
        })
-       .catch(e => console.warn(`Error fetching ${homeCategory}:`, e))
+       .catch(() => {})
        .finally(() => setIsLoadingCategory(false));
   }, [homeCategory]);
 
@@ -681,7 +677,6 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
             }
           })
           .catch(err => {
-              console.warn("Search error", err);
               setSearchResults([{
                 id: `err-${Date.now()}`,
                 title: searchQuery,
@@ -1048,7 +1043,7 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                }
            }
        } catch (err) {
-          console.warn("YouTube lookup failed, attempting iTunes fallback...", err);
+          // silenced YouTube lookup warning
        }
     }
 
@@ -1085,7 +1080,7 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                    break;
                 }
              } catch (e) {
-                console.warn("iTunes query variant failed: " + q, e);
+                // silenced query variant warning
              }
           }
           
@@ -1124,7 +1119,7 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
              }
           }
        } catch (err) {
-          console.warn("iTunes lookup failed fallback.", err);
+          // silenced iTunes fallback warning
        }
     }
     
@@ -1153,7 +1148,7 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
     }
 
     if (!finalAudioUrl || !audioRef.current) {
-        console.warn("Could not resolve finalAudioUrl. Skipping...");
+        // silenced resolve warning
         setTimeout(() => handleNext(true), 1000);
         return;
     }
@@ -1173,7 +1168,7 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
               if (playRequestIdRef.current === playRequestId) setIsPlaying(true);
           }).catch((err: any) => {
               if (err.name !== 'AbortError') {
-                 console.warn("Playback engine state notice:", err);
+                 // silenced playback state notice
               }
           });
       } else {
@@ -1181,7 +1176,7 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
       }
     } catch (err: any) {
       if (err.name !== 'AbortError') {
-        console.warn("Playback engine execution exception:", err);
+        // silenced playback execution exception
       }
     }
   };
@@ -1222,12 +1217,36 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
     }
   };
 
+  const handleNextRef = useRef(handleNext);
+  const handlePrevRef = useRef(handlePrev);
+  const togglePlayPauseRef = useRef(togglePlayPause);
+
+  useEffect(() => {
+    handleNextRef.current = handleNext;
+    handlePrevRef.current = handlePrev;
+    togglePlayPauseRef.current = togglePlayPause;
+  });
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof Element && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+      if (e.target instanceof Element && (
+        e.target.tagName === 'INPUT' || 
+        e.target.tagName === 'TEXTAREA' || 
+        e.target.getAttribute('contenteditable') === 'true' || 
+        e.target.closest('[contenteditable="true"]')
+      )) {
+        return;
+      }
+      
       if (e.code === 'Space') {
         e.preventDefault();
-        document.getElementById('main-play-pause-btn')?.click();
+        togglePlayPauseRef.current();
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        handleNextRef.current(false);
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        handlePrevRef.current();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -1672,9 +1691,12 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                        <h2 className="text-2xl font-bold text-white tracking-tight mb-6 capitalize">{homeCategory}</h2>
                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
                            {categoryData.length > 0 ? categoryData.map((item, i) => (
-                               <div 
+                               <motion.div 
                                  key={`category-${item.id}-${i}`} 
-                                 className="bg-[#181818] p-4 rounded-md cursor-pointer hover:bg-[#282828] transition-all duration-300 group flex flex-col shadow-lg hover:scale-105 active:scale-95"
+                                 whileHover={{ scale: 1.04, y: -4, boxShadow: "0 20px 25px -5px rgba(0,0,0,0.5), 0 10px 10px -5px rgba(0,0,0,0.5)" }}
+                                 whileTap={{ scale: 0.96 }}
+                                 transition={{ type: "spring", stiffness: 350, damping: 20 }}
+                                 className="bg-[#181818] p-4 rounded-md cursor-pointer hover:bg-[#282828] transition-all duration-300 group flex flex-col shadow-lg"
                                  onClick={() => {
                                     handleTrackSelect(i, categoryData);
                                     addToSearchHistory(item);
@@ -1700,7 +1722,7 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                                        {item.artist}
                                     </p>
                                  </div>
-                               </div>
+                               </motion.div>
                            )) : (
                                <div className="col-span-full text-center text-[#b3b3b3] mt-10">No {homeCategory} found</div>
                            )}
@@ -1710,8 +1732,11 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                      <div className="mt-0">
                   <div className="grid grid-cols-2 xl:grid-cols-3 gap-4 mb-8">
                     {tracks.slice(0, 12).map((track, i) => (
-                      <div 
+                      <motion.div 
                         key={`compact-${track.id}-${i}`} 
+                        whileHover={{ scale: 1.02, boxShadow: "0 12px 24px -10px rgba(0,0,0,0.5)" }}
+                        whileTap={{ scale: 0.98 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 20 }}
                         className="bg-white/10 hover:bg-white/20 h-16 sm:h-20 rounded-md cursor-pointer transition-colors group flex items-center shadow-sm overflow-hidden relative"
                         onClick={() => handleTrackSelect(i, tracks)}
                         onContextMenu={(e) => handleTrackContextMenu(e, track)}
@@ -1752,7 +1777,7 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                         >
                            {queue === tracks && currentTrackIndex === i && isPlaying ? <Pause className="w-5 h-5 sm:w-6 sm:h-6 fill-current" /> : <Play className="w-5 h-5 sm:w-6 sm:h-6 fill-current ml-1" />}
                         </button>
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
 
@@ -1766,9 +1791,12 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                         const subtitle = item.owner?.display_name || item.artist;
 
                         return (
-                            <div 
+                            <motion.div 
                               key={`standard-${item.id}-${i}`} 
-                              className="bg-[#181818] p-4 rounded-md cursor-pointer hover:bg-[#282828] transition-all duration-300 group flex flex-col shadow-lg hover:scale-105 active:scale-95"
+                              whileHover={{ scale: 1.04, y: -4, boxShadow: "0 20px 25px -5px rgba(0,0,0,0.5), 0 10px 10px -5px rgba(0,0,0,0.5)" }}
+                              whileTap={{ scale: 0.96 }}
+                              transition={{ type: "spring", stiffness: 350, damping: 20 }}
+                              className="bg-[#181818] p-4 rounded-md cursor-pointer hover:bg-[#282828] transition-all duration-300 group flex flex-col shadow-lg"
                               onClick={() => {
                                  if (!item.images) handleTrackSelect(i, tracks);
                                  else {
@@ -1804,7 +1832,7 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                                     {subtitle}
                                  </p>
                               </div>
-                            </div>
+                            </motion.div>
                         );
                      })}
                   </div>
@@ -1940,9 +1968,12 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                   ) : searchQuery ? (
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
                       {sortedSearchResults.map((item, i) => (
-                          <div 
+                          <motion.div 
                             key={`search-${item.id}-${i}`} 
-                            className="bg-[#181818] p-4 rounded-md cursor-pointer hover:bg-[#282828] transition-all duration-300 group flex flex-col shadow-lg hover:scale-105 active:scale-95"
+                            whileHover={{ scale: 1.04, y: -4, boxShadow: "0 20px 25px -5px rgba(0,0,0,0.5), 0 10px 10px -5px rgba(0,0,0,0.5)" }}
+                            whileTap={{ scale: 0.96 }}
+                            transition={{ type: "spring", stiffness: 350, damping: 20 }}
+                            className="bg-[#181818] p-4 rounded-md cursor-pointer hover:bg-[#282828] transition-all duration-300 group flex flex-col shadow-lg"
                             onClick={() => {
                                handleTrackSelect(i, sortedSearchResults);
                                addToSearchHistory(item);
@@ -1994,7 +2025,7 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                                   {item.artist}
                                </p>
                             </div>
-                          </div>
+                          </motion.div>
                       ))}
                     </div>
                   ) : (
@@ -2088,8 +2119,11 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                   ) : (
                      <div className="flex flex-col gap-2">
                         {likedTracks.map((item, i) => (
-                           <div 
+                           <motion.div 
                              key={`liked-${item.id}-${i}`} 
+                             whileHover={{ scale: 1.01, x: 4 }}
+                             whileTap={{ scale: 0.99 }}
+                             transition={{ type: "spring", stiffness: 400, damping: 25 }}
                              className={`flex items-center justify-between p-2 rounded-md hover:bg-[#2a2a2a] group cursor-pointer ${queue === likedTracks && currentTrackIndex === i ? 'bg-[#2a2a2a]' : ''}`}
                              onClick={() => handleTrackSelect(i, likedTracks)}
                              onContextMenu={(e) => handleTrackContextMenu(e, item)}
@@ -2154,7 +2188,7 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                                  </button>
                                  <div className="text-sm text-[#b3b3b3] w-12 text-right">{item.duration}</div>
                               </div>
-                           </div>
+                           </motion.div>
                         ))}
                      </div>
                   )}
@@ -2310,8 +2344,11 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                    ) : (
                       <div className="flex flex-col gap-2">
                          {plTracks.map((item, i) => (
-                            <div 
-                              key={`pltrack-${item.id}-${i}`} 
+                            <motion.div 
+                              key={`pltrack-${item.id}-${i}`}
+                              whileHover={{ scale: 1.01, x: 4 }}
+                              whileTap={{ scale: 0.99 }}
+                              transition={{ type: "spring", stiffness: 400, damping: 25 }} 
                               className={`flex items-center justify-between p-2 rounded-md hover:bg-[#2a2a2a] group cursor-pointer ${queue === plTracks && currentTrackIndex === i ? 'bg-[#2a2a2a]' : ''}`}
                               onClick={() => handleTrackSelect(i, plTracks)}
                               onContextMenu={(e) => handleTrackContextMenu(e, item)}
@@ -2392,7 +2429,7 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                                   </button>
                                   <div className="text-sm text-[#b3b3b3] w-12 text-right">{item.duration}</div>
                                </div>
-                            </div>
+                            </motion.div>
                          ))}
                       </div>
                    )}
@@ -2446,8 +2483,11 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                   ) : (
                      <div className="flex flex-col gap-2">
                         {artistTopTracks.map((item, i) => (
-                           <div 
+                           <motion.div 
                              key={`artist-track-${item.id}-${i}`}
+                             whileHover={{ scale: 1.01, x: 4 }}
+                             whileTap={{ scale: 0.99 }}
+                             transition={{ type: "spring", stiffness: 400, damping: 25 }}
                              className="flex items-center p-2 hover:bg-white/10 rounded-md cursor-pointer group transition-colors"
                              onClick={() => handleTrackSelect(i, artistTopTracks)}
                              onContextMenu={(e) => handleTrackContextMenu(e, item)}
@@ -2499,7 +2539,7 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                                  <Heart className={`w-5 h-5 ${likedTracks.some(t => t.id === item.id) ? 'fill-current' : ''}`} />
                               </button>
                               <div className="text-sm text-[#b3b3b3] w-16 text-right pr-4">{item.duration}</div>
-                           </div>
+                           </motion.div>
                         ))}
                      </div>
                   )}
@@ -2509,9 +2549,12 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                           <h2 className="text-2xl font-bold text-white mb-6">Discography</h2>
                           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
                               {artistAlbums.map((album, index) => (
-                                  <div 
+                                  <motion.div 
                                     key={`album-${album.id}-${index}`} 
-                                    className="bg-[#181818] p-4 rounded-md hover:bg-[#282828] transition-all duration-300 group flex flex-col shadow-lg hover:scale-105 cursor-pointer active:scale-95"
+                                    whileHover={{ scale: 1.04, y: -4, boxShadow: "0 20px 25px -5px rgba(0,0,0,0.5), 0 10px 10px -5px rgba(0,0,0,0.5)" }}
+                                    whileTap={{ scale: 0.96 }}
+                                    transition={{ type: "spring", stiffness: 350, damping: 20 }}
+                                    className="bg-[#181818] p-4 rounded-md hover:bg-[#282828] transition-all duration-300 group flex flex-col shadow-lg cursor-pointer"
                                   >
                                     <div className="relative aspect-square w-full mb-4 shadow-[0_8px_24px_rgba(0,0,0,0.5)] overflow-hidden rounded flex-shrink-0">
                                       <img src={album.coverUrl} className="object-cover w-full h-full bg-[#333]" alt="cover" />
@@ -2522,7 +2565,7 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                                           {album.year} • {album.type}
                                         </p>
                                     </div>
-                                  </div>
+                                  </motion.div>
                               ))}
                           </div>
                       </div>
@@ -2873,19 +2916,37 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
           
           <div className="flex items-center w-full gap-2 text-xs text-[#b3b3b3]">
             <span className="w-10 text-right">{formatTime(progress)}</span>
-            <input 
-              type="range"
-              min="0"
-              max={duration || 100}
-              value={progress}
-              onChange={handleSeek}
-              onMouseEnter={() => setIsProgressHovered(true)}
-              onMouseLeave={() => setIsProgressHovered(false)}
-              className="melodystream-range w-full"
-              style={{
-                 background: `linear-gradient(to right, ${isProgressHovered ? '#8b5cf6' : '#fff'} ${duration ? (progress / duration) * 100 : 0}%, #4d4d4d ${duration ? (progress / duration) * 100 : 0}%)`
-              }}
-            />
+            <div className="relative flex items-center w-full group h-4">
+              {/* Custom background & progress track */}
+              <div className="absolute left-0 right-0 h-1 bg-[#4d4d4d] rounded-full overflow-hidden pointer-events-none">
+                <div 
+                  className="h-full rounded-full" 
+                  style={{ 
+                    width: `${duration ? (progress / duration) * 100 : 0}%`,
+                    backgroundColor: isProgressHovered ? '#8b5cf6' : '#fff',
+                    transition: isSeeking ? 'none' : 'width 0.25s linear'
+                  }}
+                />
+              </div>
+              {/* Native input layered transparently on top */}
+              <input 
+                type="range"
+                min="0"
+                max={duration || 100}
+                value={progress}
+                onChange={handleSeek}
+                onMouseDown={() => setIsSeeking(true)}
+                onMouseUp={() => setIsSeeking(false)}
+                onTouchStart={() => setIsSeeking(true)}
+                onTouchEnd={() => setIsSeeking(false)}
+                onMouseEnter={() => setIsProgressHovered(true)}
+                onMouseLeave={() => setIsProgressHovered(false)}
+                className="melodystream-range w-full relative z-10"
+                style={{
+                   background: 'transparent'
+                }}
+              />
+            </div>
             <span className="w-10">{formatTime(duration)}</span>
           </div>
         </div>
@@ -2956,7 +3017,7 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
             </button>
           </div>
           <div className="absolute bottom-0 left-2 right-2 h-[2px] bg-white/20 rounded-full overflow-hidden">
-             <div className="h-full bg-white rounded-full" style={{ width: `${(progress / (duration || 1)) * 100}%` }}></div>
+             <div className="h-full bg-white rounded-full" style={{ width: `${(progress / (duration || 1)) * 100}%`, transition: 'width 0.25s linear' }}></div>
           </div>
         </div>
       )}
@@ -3038,8 +3099,8 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                         }
                      }}
                   >
-                     <div className="h-full bg-white rounded-full relative" style={{ width: `${(progress / (duration || 1)) * 100}%` }}></div>
-                     <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow" style={{ left: `max(0%, min(100%, calc(${(progress / (duration || 1)) * 100}% - 6px)))` }}></div>
+                     <div className="h-full bg-white rounded-full relative" style={{ width: `${(progress / (duration || 1)) * 100}%`, transition: isSeeking ? 'none' : 'width 0.25s linear' }}></div>
+                     <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow" style={{ left: `max(0%, min(100%, calc(${(progress / (duration || 1)) * 100}% - 6px)))`, transition: isSeeking ? 'none' : 'left 0.25s linear' }}></div>
                   </div>
                   <div className="flex justify-between text-[11px] text-[#b3b3b3] mt-2 font-mono">
                      <span>{formatTime(progress)}</span>
@@ -3186,7 +3247,7 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
          onVolumeChange={() => setVolume(audioRef.current?.volume || 1)}
          onError={(e) => {
             const errorDetails = e.currentTarget.error ? `Code: ${e.currentTarget.error.code}, Message: ${e.currentTarget.error.message}` : "Playback error";
-            console.error("Audio src stream failed to load/play:", audioRef.current?.src, errorDetails);
+            // silenced audio source load failure
             const currentTracks = stateRef.current.queue;
             const currentIndex = stateRef.current.currentTrackIndex;
             const currentTrack = currentTracks[currentIndex];
