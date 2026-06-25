@@ -107,8 +107,23 @@ function FirebaseAuthScreen({ onAuthSuccess, onContinueAsGuest }: { onAuthSucces
         </h1>
 
         {error && (
-          <div className="bg-red-500/10 text-red-500 p-3 rounded mb-4 text-sm">
-            {error}
+          <div className="bg-red-500/10 text-red-400 p-4 rounded mb-4 text-sm border border-red-500/20">
+            {error.toLowerCase().includes("operation-not-allowed") ? (
+              <div className="space-y-2 text-left">
+                <p className="font-bold text-red-500">Firebase: Error (auth/operation-not-allowed)</p>
+                <p className="text-gray-300">The <strong>Email/Password</strong> provider is not enabled in your Firebase project.</p>
+                <div className="bg-black/40 p-3 rounded text-xs text-gray-400 space-y-1">
+                  <p className="font-semibold text-white">How to fix this once and for all:</p>
+                  <ol className="list-decimal pl-4 space-y-1">
+                    <li>Open your <a href="https://console.firebase.google.com/project/lateral-droplet-pln7n/authentication/providers" target="_blank" rel="noopener noreferrer" className="text-[#8b5cf6] hover:underline font-bold">Firebase Console</a>.</li>
+                    <li>Click <strong>"Add new provider"</strong>.</li>
+                    <li>Select <strong>"Email/Password"</strong>, enable the switch, and click <strong>"Save"</strong>.</li>
+                  </ol>
+                </div>
+              </div>
+            ) : (
+              error
+            )}
           </div>
         )}
         
