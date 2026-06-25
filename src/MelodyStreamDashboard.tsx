@@ -450,6 +450,32 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       if (u) {
+        if (u.isAnonymous) {
+          const localUserStr = localStorage.getItem('melodystream_local_logged_in_user');
+          if (localUserStr) {
+            try {
+              const localUser = JSON.parse(localUserStr);
+              if (localUser.uid === u.uid) {
+                setFirebaseUser({
+                  ...u,
+                  displayName: localUser.displayName || u.displayName,
+                  email: localUser.email || u.email,
+                  photoURL: localUser.photoURL || u.photoURL,
+                } as any);
+                return;
+              }
+            } catch (e) {}
+          }
+        } else {
+          // Keep localStorage updated for Google/Email auth
+          const customUser = {
+            uid: u.uid,
+            displayName: u.displayName || u.email?.split('@')[0] || "Listener",
+            email: u.email,
+            photoURL: u.photoURL,
+          };
+          localStorage.setItem('melodystream_local_logged_in_user', JSON.stringify(customUser));
+        }
         setFirebaseUser(u);
       } else {
         const localUserStr = localStorage.getItem('melodystream_local_logged_in_user');
