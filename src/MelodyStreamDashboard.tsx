@@ -60,10 +60,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
     path
   };
   
-  const isPermissionError = errMsg.toLowerCase().includes("permission") || errMsg.toLowerCase().includes("insufficient");
-  if (isPermissionError) {
-    throw new Error(JSON.stringify(errInfo));
-  }
+  console.warn(`[Firestore Error] Operation: ${operationType}, Path: ${path || 'unknown'}, Error:`, errMsg);
 }
 
 const getProfileImage = (user: User | null) => {
@@ -330,6 +327,7 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
   const ytPlayerRef = useRef<any>(null);
   const playPauseRef = useRef<{ isPlaying: boolean; currentTrack: Track | undefined }>({ isPlaying: false, currentTrack: undefined });
   const playRequestIdRef = useRef<number>(0);
+  const didFetchTracks = useRef(false);
 
   useEffect(() => {
     playPauseRef.current = { isPlaying, currentTrack: queue[currentTrackIndex] };
@@ -479,20 +477,31 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
   useEffect(() => {
     if (!firebaseUser) return;
     
+    // Offline-first sync fallback: load local playlists immediately to prevent empty/broken UI states
+    const storageKey = firebaseUser.uid === 'guest_user' 
+      ? 'spotify-clone-guest-playlists' 
+      : `spotify-clone-${firebaseUser.uid}-playlists`;
+    const localPlsStr = localStorage.getItem(storageKey);
+    if (localPlsStr) {
+      try {
+        const localPls = JSON.parse(localPlsStr);
+        setPlaylists(prev => {
+          const nonCustom = prev.filter(p => !localPls.some((f: any) => f.id === p.id));
+          return [...localPls, ...nonCustom];
+        });
+      } catch (e) {
+        console.warn("Failed to parse local custom playlists", e);
+      }
+    }
+
+    if (firebaseUser.uid === 'guest_user') {
+      return;
+    }
+    
     const fetchCustomPlaylists = async () => {
-      if (firebaseUser.uid === 'guest_user') {
-        const localPlsStr = localStorage.getItem('spotify-clone-guest-playlists');
-        if (localPlsStr) {
-          try {
-            const localPls = JSON.parse(localPlsStr);
-            setPlaylists(prev => {
-              const nonCustom = prev.filter(p => !localPls.some((f: any) => f.id === p.id));
-              return [...localPls, ...nonCustom];
-            });
-          } catch (e) {
-            console.warn("Failed to parse local custom playlists", e);
-          }
-        }
+      // Ensure we are fully authenticated with a real account matching firebaseUser.uid before querying Firestore
+      if (!auth.currentUser || auth.currentUser.uid !== firebaseUser.uid) {
+        console.log("Postponing Firestore query: Auth state is not fully resolved in SDK yet.");
         return;
       }
 
@@ -524,19 +533,25 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
   }, [firebaseUser]);
 
   useEffect(() => {
-    if (firebaseUser && firebaseUser.uid === 'guest_user') {
-      localStorage.setItem('spotify-clone-guest-playlists', JSON.stringify(playlists.filter(p => !['liked', 'uploads'].includes(p.id))));
+    if (firebaseUser) {
+      const storageKey = firebaseUser.uid === 'guest_user' 
+        ? 'spotify-clone-guest-playlists' 
+        : `spotify-clone-${firebaseUser.uid}-playlists`;
+      localStorage.setItem(storageKey, JSON.stringify(playlists.filter(p => !['liked', 'uploads'].includes(p.id))));
     }
   }, [playlists, firebaseUser]);
 
   useEffect(() => {
-    fetch('/api/tracks')
-      .then(res => res.json())
-      .then(data => {
-         setTracks(data);
-         if (queue.length === 0) setQueue(data);
-      })
-      .catch(() => {});
+    if (!didFetchTracks.current) {
+      didFetchTracks.current = true;
+      fetch('/api/tracks')
+        .then(res => res.json())
+        .then(data => {
+           setTracks(data);
+           if (queue.length === 0) setQueue(data);
+        })
+        .catch(() => {});
+    }
 
     if (accessToken && accessToken !== 'local_bypass') {
       fetch('https://api.spotify.com/v1/me/playlists?limit=20', {
@@ -893,18 +908,21 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
          tracks: { total: 1, items: [{ track }] }
        };
        setPlaylists(prev => [newPlaylist, ...prev]);
-       try {
-           const docRef = doc(db, 'users', firebaseUser.uid, 'playlists', newId);
-           await setDoc(docRef, {
-               name: playlistName,
-               coverUrl: track.coverUrl,
-               tracks: [track]
-           });
-           showToast(`Created playlist "${playlistName}" & added "${track.title}"`, "success");
-       } catch (err) {
-           console.error("Failed to create playlist in Firestore", err);
-           handleFirestoreError(err, OperationType.CREATE, `users/${firebaseUser.uid}/playlists/${newId}`);
-       }
+       showToast(`Created playlist "${playlistName}" & added "${track.title}"`, "success");
+
+       if (auth.currentUser && firebaseUser.uid !== 'guest_user') {
+            try {
+                 const docRef = doc(db, 'users', firebaseUser.uid, 'playlists', newId);
+                 await setDoc(docRef, {
+                     name: playlistName,
+                     coverUrl: track.coverUrl,
+                     tracks: [track]
+                 });
+            } catch (err) {
+                 console.error("Failed to create playlist in Firestore", err);
+                 handleFirestoreError(err, OperationType.CREATE, `users/${firebaseUser.uid}/playlists/${newId}`);
+            }
+        }
        setPlaylistSelectTrack(null);
        return;
     }
@@ -912,37 +930,40 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
     const targetPlaylistInfo = playlists.find(p => p.id === playlistId);
     if (!targetPlaylistInfo) return;
 
-    try {
-        const docRef = doc(db, 'users', firebaseUser.uid, 'playlists', playlistId);
-        let newItems = [...(targetPlaylistInfo.tracks.items || [])];
-        if (!newItems.find((i: any) => i.track.id === track.id)) {
-            newItems.push({ track });
-        }
-        
-        const trackDataList = newItems.map((i: any) => i.track);
-        await setDoc(docRef, {
-            name: targetPlaylistInfo.name,
-            tracks: trackDataList
-        }, { merge: true });
-        
-        showToast(`Added "${track.title}" to ${targetPlaylistInfo.name}`, "success");
+    let newItems = [...(targetPlaylistInfo.tracks.items || [])];
+    if (!newItems.find((i: any) => i.track.id === track.id)) {
+        newItems.push({ track });
+    }
 
-        setPlaylists(prev => prev.map(p => {
-            if (p.id === playlistId) {
-                return {
-                    ...p,
-                    tracks: {
-                        ...p.tracks,
-                        total: newItems.length,
-                        items: newItems
-                    }
-                };
-            }
-            return p;
-        }));
-    } catch (e) {
-        console.error("Failed to add to custom playlist", e);
-        handleFirestoreError(e, OperationType.UPDATE, `users/${firebaseUser.uid}/playlists/${playlistId}`);
+    // Update local state immediately for a responsive, offline-first experience
+    setPlaylists(prev => prev.map(p => {
+        if (p.id === playlistId) {
+            return {
+                ...p,
+                tracks: {
+                    ...p.tracks,
+                    total: newItems.length,
+                    items: newItems
+                }
+            };
+        }
+        return p;
+    }));
+    
+    showToast(`Added "${track.title}" to ${targetPlaylistInfo.name}`, "success");
+
+    if (auth.currentUser && firebaseUser.uid !== 'guest_user') {
+        try {
+            const docRef = doc(db, 'users', firebaseUser.uid, 'playlists', playlistId);
+            const trackDataList = newItems.map((i: any) => i.track);
+            await setDoc(docRef, {
+                name: targetPlaylistInfo.name,
+                tracks: trackDataList
+            }, { merge: true });
+        } catch (e) {
+            console.error("Failed to add to custom playlist in Firestore", e);
+            handleFirestoreError(e, OperationType.UPDATE, `users/${firebaseUser.uid}/playlists/${playlistId}`);
+        }
     }
     setPlaylistSelectTrack(null);
   };
@@ -2213,9 +2234,8 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                           initialImageUrl={pl.images && pl.images.length > 0 ? pl.images[0].url : undefined}
                           onSaveImage={async (file) => {
                               try {
-                                  const user = auth.currentUser || firebaseUser;
-                                  if (!user) return;
-                                  if (user.uid === 'guest_user') {
+                                  const user = auth.currentUser;
+                                  if (!user || firebaseUser.uid === 'guest_user') {
                                       const reader = new FileReader();
                                       reader.onloadend = () => {
                                           const base64data = reader.result as string;
@@ -2251,7 +2271,7 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                                    }
                                    return updated;
                                });
-                               if (firebaseUser && firebaseUser.uid !== 'guest_user') {
+                               if (auth.currentUser && firebaseUser && firebaseUser.uid !== 'guest_user') {
                                    try {
                                        const docRef = doc(db, 'users', firebaseUser.uid, 'playlists', pl.id);
                                        await setDoc(docRef, { name: newName }, { merge: true });
@@ -2294,19 +2314,19 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                                   'Delete/clear all songs from "My Uploads"? This cannot be undone.',
                                   () => {
                                      setPlaylists(prev => prev.filter(p => p.id !== pl.id));
-                                     if (firebaseUser) {
-                                        try {
-                                           const q = query(collection(db, 'users', firebaseUser.uid, 'likedSongs'));
-                                           getDocs(q).then(sn => {
-                                              sn.docs.forEach(doc => {
-                                                  deleteDoc(doc.ref).catch(err => console.error("Error deleting song doc", err));
-                                              });
-                                           });
-                                           deleteDoc(doc(db, 'users', firebaseUser.uid, 'playlists', 'uploads_metadata')).catch(err => console.warn(err));
-                                        } catch (err) {
-                                           console.error("Failed to clear Uploads playlist", err);
-                                        }
-                                     }
+                                     if (auth.currentUser && firebaseUser && firebaseUser.uid !== 'guest_user') {
+                                         try {
+                                            const q = query(collection(db, 'users', firebaseUser.uid, 'likedSongs'));
+                                            getDocs(q).then(sn => {
+                                               sn.docs.forEach(doc => {
+                                                   deleteDoc(doc.ref).catch(err => console.error("Error deleting song doc", err));
+                                               });
+                                            });
+                                            deleteDoc(doc(db, 'users', firebaseUser.uid, 'playlists', 'uploads_metadata')).catch(err => console.warn(err));
+                                         } catch (err) {
+                                            console.error("Failed to clear Uploads playlist", err);
+                                         }
+                                      }
                                      navigateTo('home');
                                   }
                                );
@@ -2322,13 +2342,13 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                                         }
                                         return updated;
                                      });
-                                     if (firebaseUser && firebaseUser.uid !== 'guest_user') {
-                                        try {
-                                           deleteDoc(doc(db, 'users', firebaseUser.uid, 'playlists', pl.id)).catch(err => console.error(err));
-                                        } catch (err) {
-                                           console.error("Failed to delete custom playlist from Firestore", err);
-                                        }
-                                     }
+                                     if (auth.currentUser && firebaseUser && firebaseUser.uid !== 'guest_user') {
+                                         try {
+                                            deleteDoc(doc(db, 'users', firebaseUser.uid, 'playlists', pl.id)).catch(err => console.error(err));
+                                         } catch (err) {
+                                            console.error("Failed to delete custom playlist from Firestore", err);
+                                         }
+                                      }
                                      navigateTo('home');
                                   }
                                );
@@ -3390,8 +3410,8 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
                     const uEmail = firebaseUser?.email || 'guest@example.com';
                     const uUid = firebaseUser?.uid || 'guest_user';
                     
-                    if (firebaseUser && firebaseUser.uid !== 'guest_user') {
-                      await addDoc(collection(db, 'users', firebaseUser.uid, 'supportTickets'), {
+                    if (auth.currentUser && firebaseUser && firebaseUser.uid !== 'guest_user') {
+                       await addDoc(collection(db, 'users', firebaseUser.uid, 'supportTickets'), {
                         subject: supportSubject,
                         message: supportMessage,
                         email: supportEmail || uEmail,

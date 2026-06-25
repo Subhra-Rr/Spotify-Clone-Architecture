@@ -27,26 +27,11 @@ function FirebaseAuthScreen({ onAuthSuccess, onContinueAsGuest }: { onAuthSucces
       await signInWithPopup(auth, googleProvider);
       onAuthSuccess();
     } catch (err: any) {
-      const errMsg = (err.message || String(err)).toLowerCase();
-      if (errMsg.includes("unauthorized-domain") || errMsg.includes("auth/unauthorized-domain")) {
-        // Automatically bypass restriction and sign in locally as Google User
-        const localUser = {
-          uid: 'local_google_user_' + Math.random().toString(36).substring(2, 11),
-          displayName: "sdsabat2006",
-          email: "sdsabat2006@gmail.com",
-          photoURL: "https://lh3.googleusercontent.com/a/default-user=s96-c",
-          delete: async () => {
-            localStorage.removeItem('melodystream_local_logged_in_user');
-          }
-        };
-        localStorage.setItem('melodystream_local_logged_in_user', JSON.stringify(localUser));
-        onAuthSuccess();
-        window.location.reload();
-        return;
-      }
       setError(err.message || "Google Auth failed");
     }
   };
+
+  const isUnauthorizedDomain = error.toLowerCase().includes("unauthorized-domain") || error.toLowerCase().includes("auth/unauthorized-domain");
 
   return (
     <div className="flex flex-col h-screen bg-black items-center justify-center font-sans">
@@ -60,8 +45,35 @@ function FirebaseAuthScreen({ onAuthSuccess, onContinueAsGuest }: { onAuthSucces
 
         {error && (
           <div className="bg-red-500/10 text-red-400 p-4 rounded mb-6 text-sm border border-red-500/20 text-left">
-            <p className="font-bold text-red-500 mb-1">Notice</p>
-            <p className="text-gray-300 text-xs">{error}</p>
+            <p className="font-bold text-red-500 mb-1">Firebase Error</p>
+            <p className="text-gray-300 text-xs mb-3">{error}</p>
+            
+            {isUnauthorizedDomain && (
+              <div className="border border-[#8b5cf6]/30 bg-black/40 p-3 rounded text-xs space-y-2 mt-2">
+                <p className="font-bold text-[#8b5cf6]">How to enable real Google Login here:</p>
+                <p className="text-gray-300 leading-relaxed">
+                  Your current domain (<strong>{window.location.hostname}</strong>) must be authorized in your Firebase Project to use real Google login.
+                </p>
+                <ol className="list-decimal pl-4 space-y-2 text-gray-400 leading-normal">
+                  <li>
+                    Open your <a href="https://console.firebase.google.com/project/lateral-droplet-pln7n/authentication/settings" target="_blank" rel="noopener noreferrer" className="text-[#8b5cf6] hover:underline font-semibold">Firebase settings page</a>.
+                  </li>
+                  <li>
+                    Click on <strong>"Authorised domains"</strong> (you were here in your screenshot!).
+                  </li>
+                  <li>
+                    <strong className="text-white">Crucial Step:</strong> Because you already have many domains listed, the <strong>"Add domain"</strong> button is pushed off the screen. 
+                    <span className="text-white font-medium"> Scroll down inside the right-hand panel/table to the very bottom</span>.
+                  </li>
+                  <li>
+                    At the bottom of the table, you will see the <strong>"Add domain"</strong> button!
+                  </li>
+                  <li>
+                    Click it, type <strong className="text-white select-all">{window.location.hostname}</strong>, and click <strong>"Add"</strong>.
+                  </li>
+                </ol>
+              </div>
+            )}
           </div>
         )}
         

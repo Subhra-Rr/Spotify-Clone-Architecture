@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, [refreshToken, expiresAt]);
 
-  const login = async () => {
+  const login = React.useCallback(async () => {
     try {
       console.log("Starting login process...");
       const redirectUri = window.location.origin + '/api/callback';
@@ -102,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (e: any) {
       // Failed to login
     }
-  };
+  }, []);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -124,19 +124,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  const bypass = () => {
+  const bypass = React.useCallback(() => {
     setAccessToken('local_bypass');
     localStorage.setItem('melodystream_access_token', 'local_bypass');
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = React.useCallback(() => {
     setAccessToken(null);
     setRefreshToken(null);
     setExpiresAt(null);
     localStorage.removeItem('melodystream_access_token');
     localStorage.removeItem('melodystream_refresh_token');
     localStorage.removeItem('melodystream_expires_at');
-  };
+  }, []);
 
   return (
     <AuthContext.Provider value={{ accessToken, isAuthenticated: !!accessToken, login, bypass, logout }}>
