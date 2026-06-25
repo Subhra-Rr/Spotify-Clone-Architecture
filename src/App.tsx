@@ -63,9 +63,12 @@ function FirebaseAuthScreen({ onAuthSuccess, onContinueAsGuest }: { onAuthSucces
           await signInWithEmailAndPassword(auth, email, password);
         } catch (fbErr: any) {
           const errMsg = (fbErr.message || String(fbErr)).toLowerCase();
-          const isOperationNotAllowed = errMsg.includes("operation-not-allowed") || errMsg.includes("auth/operation-not-allowed");
+          const isFallbackRequired = errMsg.includes("operation-not-allowed") || 
+                                     errMsg.includes("auth/operation-not-allowed") ||
+                                     errMsg.includes("unauthorized-domain") ||
+                                     errMsg.includes("auth/unauthorized-domain");
           
-          if (isOperationNotAllowed) {
+          if (isFallbackRequired) {
             const localUsersStr = localStorage.getItem('melodystream_local_users') || '{}';
             const localUsers = JSON.parse(localUsersStr);
             const userRecord = localUsers[normalizedEmail];
@@ -100,9 +103,12 @@ function FirebaseAuthScreen({ onAuthSuccess, onContinueAsGuest }: { onAuthSucces
           setMessage("Account created successfully!");
         } catch (fbErr: any) {
           const errMsg = (fbErr.message || String(fbErr)).toLowerCase();
-          const isOperationNotAllowed = errMsg.includes("operation-not-allowed") || errMsg.includes("auth/operation-not-allowed");
+          const isFallbackRequired = errMsg.includes("operation-not-allowed") || 
+                                     errMsg.includes("auth/operation-not-allowed") ||
+                                     errMsg.includes("unauthorized-domain") ||
+                                     errMsg.includes("auth/unauthorized-domain");
           
-          if (isOperationNotAllowed) {
+          if (isFallbackRequired) {
             const localUsersStr = localStorage.getItem('melodystream_local_users') || '{}';
             const localUsers = JSON.parse(localUsersStr);
             
@@ -200,6 +206,27 @@ function FirebaseAuthScreen({ onAuthSuccess, onContinueAsGuest }: { onAuthSucces
                     <li>Open your <a href="https://console.firebase.google.com/project/lateral-droplet-pln7n/authentication/providers" target="_blank" rel="noopener noreferrer" className="text-[#8b5cf6] hover:underline font-bold">Firebase Console</a>.</li>
                     <li>Click <strong>"Add new provider"</strong>.</li>
                     <li>Select <strong>"Email/Password"</strong>, enable the switch, and click <strong>"Save"</strong>.</li>
+                  </ol>
+                </div>
+              </div>
+            ) : error.toLowerCase().includes("unauthorized-domain") || error.toLowerCase().includes("auth/unauthorized-domain") ? (
+              <div className="space-y-3 text-left">
+                <p className="font-bold text-red-500">Firebase: Error (auth/unauthorized-domain)</p>
+                <p className="text-gray-300 text-xs">The domain you are accessing this app from (<strong>{window.location.hostname}</strong>) is not authorized in your Firebase console.</p>
+                
+                <div className="border border-[#8b5cf6]/30 bg-black/40 p-3 rounded text-xs space-y-2">
+                  <p className="font-bold text-[#8b5cf6] flex items-center gap-1">🌟 Option B (Chosen): Use the Local/Offline Fallback System</p>
+                  <p className="text-gray-300">We have fully enabled this for you. <strong>Simply type any email and password below and click "Sign Up" or "Log In"!</strong></p>
+                  <p className="text-gray-400">It will automatically bypass the Firebase domain restriction and create/log you into your account locally in your browser instantly!</p>
+                </div>
+
+                <div className="bg-black/20 p-3 rounded text-xs text-gray-400 space-y-1 border border-gray-800">
+                  <p className="font-semibold text-white">Alternatively, Option A (Authorize this domain):</p>
+                  <ol className="list-decimal pl-4 space-y-1">
+                    <li>Go to your <a href="https://console.firebase.google.com/project/lateral-droplet-pln7n/authentication/settings" target="_blank" rel="noopener noreferrer" className="text-[#8b5cf6] hover:underline font-bold">Firebase Auth Settings</a>.</li>
+                    <li>Click <strong>"Authorized domains"</strong> on the left menu under "Domains" (you are on this screen now!).</li>
+                    <li><strong>Scroll all the way down</strong> past the list of custom domains — the <strong>"Add domain"</strong> button is located at the very bottom of that list/table.</li>
+                    <li>Add <strong className="text-white select-all">{window.location.hostname}</strong>.</li>
                   </ol>
                 </div>
               </div>
