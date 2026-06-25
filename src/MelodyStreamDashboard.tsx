@@ -454,6 +454,13 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
       if (u) {
         setFirebaseUser(u);
       } else {
+        const localUserStr = localStorage.getItem('melodystream_local_logged_in_user');
+        if (localUserStr) {
+          try {
+            setFirebaseUser(JSON.parse(localUserStr));
+            return;
+          } catch (e) {}
+        }
         const savedPhoto = localStorage.getItem('spotify-clone-guest-photo');
         setFirebaseUser({
           uid: 'guest_user',

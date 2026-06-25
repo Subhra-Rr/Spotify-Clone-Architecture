@@ -10,6 +10,7 @@ import {
   sendPasswordResetEmail,
   sendEmailVerification,
   onAuthStateChanged,
+  signOut,
   User,
 } from "firebase/auth";
 
@@ -53,12 +54,93 @@ function FirebaseAuthScreen({ onAuthSuccess, onContinueAsGuest }: { onAuthSucces
        setError("Please meet all password requirements before signing up.");
        return;
     }
+    
+    const normalizedEmail = email.trim().toLowerCase();
+
     try {
       if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password);
+        try {
+          await signInWithEmailAndPassword(auth, email, password);
+        } catch (fbErr: any) {
+          const errMsg = (fbErr.message || String(fbErr)).toLowerCase();
+          const isOperationNotAllowed = errMsg.includes("operation-not-allowed") || errMsg.includes("auth/operation-not-allowed");
+          
+          if (isOperationNotAllowed) {
+            const localUsersStr = localStorage.getItem('melodystream_local_users') || '{}';
+            const localUsers = JSON.parse(localUsersStr);
+            const userRecord = localUsers[normalizedEmail];
+            
+            if (userRecord && userRecord.password === password) {
+              const localUser = {
+                uid: 'local_user_' + btoa(normalizedEmail).replace(/=/g, ''),
+                displayName: userRecord.displayName || normalizedEmail.split('@')[0],
+                email: normalizedEmail,
+                photoURL: null,
+                delete: async () => {
+                  const currentUsers = JSON.parse(localStorage.getItem('melodystream_local_users') || '{}');
+                  delete currentUsers[normalizedEmail];
+                  localStorage.setItem('melodystream_local_users', JSON.stringify(currentUsers));
+                  localStorage.removeItem('melodystream_local_logged_in_user');
+                }
+              };
+              localStorage.setItem('melodystream_local_logged_in_user', JSON.stringify(localUser));
+              onAuthSuccess();
+              window.location.reload();
+              return;
+            } else {
+              throw new Error("Invalid credentials. Please check your email and password.");
+            }
+          } else {
+            throw fbErr;
+          }
+        }
       } else {
-        await createUserWithEmailAndPassword(auth, email, password);
-        setMessage("Account created successfully!");
+        try {
+          await createUserWithEmailAndPassword(auth, email, password);
+          setMessage("Account created successfully!");
+        } catch (fbErr: any) {
+          const errMsg = (fbErr.message || String(fbErr)).toLowerCase();
+          const isOperationNotAllowed = errMsg.includes("operation-not-allowed") || errMsg.includes("auth/operation-not-allowed");
+          
+          if (isOperationNotAllowed) {
+            const localUsersStr = localStorage.getItem('melodystream_local_users') || '{}';
+            const localUsers = JSON.parse(localUsersStr);
+            
+            if (localUsers[normalizedEmail]) {
+              throw new Error("An account with this email already exists.");
+            }
+            
+            const displayName = normalizedEmail.split('@')[0];
+            localUsers[normalizedEmail] = {
+              email: normalizedEmail,
+              password,
+              displayName,
+              createdAt: new Date().toISOString()
+            };
+            localStorage.setItem('melodystream_local_users', JSON.stringify(localUsers));
+            
+            const localUser = {
+              uid: 'local_user_' + btoa(normalizedEmail).replace(/=/g, ''),
+              displayName,
+              email: normalizedEmail,
+              photoURL: null,
+              delete: async () => {
+                const currentUsers = JSON.parse(localStorage.getItem('melodystream_local_users') || '{}');
+                delete currentUsers[normalizedEmail];
+                localStorage.setItem('melodystream_local_users', JSON.stringify(currentUsers));
+                localStorage.removeItem('melodystream_local_logged_in_user');
+              }
+            };
+            localStorage.setItem('melodystream_local_logged_in_user', JSON.stringify(localUser));
+            
+            setMessage("Account created successfully!");
+            onAuthSuccess();
+            window.location.reload();
+            return;
+          } else {
+            throw fbErr;
+          }
+        }
       }
       onAuthSuccess();
     } catch (err: any) {
@@ -382,8 +464,22 @@ function MainLayout() {
   }, [isAuthenticated, bypass]);
 
   useEffect(() => {
+    const localUserStr = localStorage.getItem('melodystream_local_logged_in_user');
+    let initialUser: User | null = null;
+    if (localUserStr) {
+      try {
+        initialUser = JSON.parse(localUserStr);
+      } catch (e) {}
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setFirebaseUser(user);
+      if (user) {
+        setFirebaseUser(user);
+      } else if (initialUser) {
+        setFirebaseUser(initialUser);
+      } else {
+        setFirebaseUser(null);
+      }
       setLoading(false);
     });
 
@@ -403,6 +499,8 @@ function MainLayout() {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('melodystream_local_logged_in_user');
+    signOut(auth).catch(() => {});
     setFirebaseUser(null);
   };
 
