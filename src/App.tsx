@@ -1,16 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { AuthProvider, useAuth } from "./MelodyStreamAuthContext";
 import MelodyStreamDashboard from "./MelodyStreamDashboard";
-import { Eye, EyeOff, Check, X, Music } from "lucide-react";
+import { Music } from "lucide-react";
 import { auth, googleProvider } from "./firebase";
 import {
   signInWithPopup,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signInAnonymously,
-  updateProfile,
-  sendPasswordResetEmail,
-  sendEmailVerification,
   onAuthStateChanged,
   signOut,
   User,
@@ -22,16 +16,6 @@ function FirebaseAuthScreen({ onAuthSuccess, onContinueAsGuest }: { onAuthSucces
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-
-  const [isBypassMode, setIsBypassMode] = useState(false);
-  const [bypassEmail, setBypassEmail] = useState("");
-  const [bypassName, setBypassName] = useState("");
-
   const handleGoogleAuth = async () => {
     setError("");
     setMessage("");
@@ -41,73 +25,6 @@ function FirebaseAuthScreen({ onAuthSuccess, onContinueAsGuest }: { onAuthSucces
       onAuthSuccess();
     } catch (err: any) {
       setError(err.message || "Google Auth failed");
-    }
-  };
-
-  const handleEmailAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setMessage("");
-    try {
-      if (isSignUp) {
-        const cred = await createUserWithEmailAndPassword(auth, email, password);
-        await updateProfile(cred.user, {
-          displayName: displayName || email.split("@")[0],
-          photoURL: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(displayName || email.split("@")[0])}`
-        });
-        
-        // Also save profile details to localStorage for consistency
-        const customUser = {
-          uid: cred.user.uid,
-          displayName: displayName || email.split("@")[0],
-          email: email,
-          photoURL: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(displayName || email.split("@")[0])}`,
-        };
-        localStorage.setItem('melodystream_local_logged_in_user', JSON.stringify(customUser));
-        setMessage("Account created successfully!");
-      } else {
-        const cred = await signInWithEmailAndPassword(auth, email, password);
-        // Save profile details to localStorage for consistency
-        const customUser = {
-          uid: cred.user.uid,
-          displayName: cred.user.displayName || email.split("@")[0],
-          email: email,
-          photoURL: cred.user.photoURL || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(cred.user.displayName || email.split("@")[0])}`,
-        };
-        localStorage.setItem('melodystream_local_logged_in_user', JSON.stringify(customUser));
-        setMessage("Logged in successfully!");
-      }
-      onAuthSuccess();
-    } catch (err: any) {
-      setError(err.message || "Email authentication failed");
-    }
-  };
-
-  const handleDirectBypass = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setMessage("");
-    try {
-      const cred = await signInAnonymously(auth);
-      if (cred.user) {
-        await updateProfile(cred.user, {
-          displayName: bypassName || "Google User",
-          photoURL: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(bypassName)}`
-        });
-        
-        const customUser = {
-          uid: cred.user.uid,
-          displayName: bypassName,
-          email: bypassEmail,
-          photoURL: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(bypassName)}`,
-        };
-        
-        localStorage.setItem('melodystream_local_logged_in_user', JSON.stringify(customUser));
-        setMessage("Direct Google ID session launched successfully!");
-        onAuthSuccess();
-      }
-    } catch (err: any) {
-      setError(err.message || "Direct bypass authentication failed");
     }
   };
 
@@ -200,122 +117,6 @@ function FirebaseAuthScreen({ onAuthSuccess, onContinueAsGuest }: { onAuthSucces
         >
           Continue as Guest / Local Player
         </button>
-
-        {/* Email & Password login / signup */}
-        <div className="text-left border-t border-[#282828] pt-6">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-[#b3b3b3] mb-4 text-center">
-            {isSignUp ? "Create an account" : "Sign in with Google Email ID"}
-          </h2>
-          <form onSubmit={handleEmailAuth} className="space-y-4">
-            {isSignUp && (
-              <div>
-                <label className="text-xs font-bold text-[#b3b3b3] uppercase tracking-wider block mb-1">Display Name</label>
-                <input
-                  type="text"
-                  placeholder="Your Name"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  className="w-full bg-[#181818] border border-[#3e3e3e] focus:border-[#8b5cf6] rounded px-3 py-2 text-white text-sm outline-none transition-colors"
-                  required
-                />
-              </div>
-            )}
-            <div>
-              <label className="text-xs font-bold text-[#b3b3b3] uppercase tracking-wider block mb-1">Gmail / Google Email ID</label>
-              <input
-                type="email"
-                placeholder="your.google.email@gmail.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-[#181818] border border-[#3e3e3e] focus:border-[#8b5cf6] rounded px-3 py-2 text-white text-sm outline-none transition-colors"
-                required
-              />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-[#b3b3b3] uppercase tracking-wider block mb-1">Password</label>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-[#181818] border border-[#3e3e3e] focus:border-[#8b5cf6] rounded px-3 py-2 text-white text-sm outline-none transition-colors pr-10"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#b3b3b3] hover:text-white transition-colors"
-                >
-                  {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
-                </button>
-              </div>
-            </div>
-            <button
-              type="submit"
-              className="w-full bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white font-bold text-[14px] rounded-full py-2.5 transition-all cursor-pointer mt-2"
-            >
-              {isSignUp ? "Sign Up with Google Email" : "Sign In with Google Email"}
-            </button>
-          </form>
-          <div className="text-center mt-4">
-            <button
-              type="button"
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-[#a78bfa] hover:underline text-xs font-medium"
-            >
-              {isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}
-            </button>
-          </div>
-        </div>
-
-        {/* Direct Google ID/Email Direct Bypass */}
-        <div className="mt-6 border-t border-[#282828] pt-6 text-left">
-          <button
-            type="button"
-            onClick={() => setIsBypassMode(!isBypassMode)}
-            className="w-full flex items-center justify-between text-[#b3b3b3] hover:text-white text-xs font-bold uppercase tracking-wider"
-          >
-            <span>⚡ Direct Google ID / Email Bypass</span>
-            <span className="text-[10px]">{isBypassMode ? "▼" : "▶"}</span>
-          </button>
-          
-          {isBypassMode && (
-            <form onSubmit={handleDirectBypass} className="space-y-4 mt-4">
-              <p className="text-xs text-[#878787] leading-relaxed">
-                If the Google Sign-In popup gets blocked by the browser or is unauthorized on this domain, use this direct bypass to log in securely with your Google email & name!
-              </p>
-              <div>
-                <label className="text-xs font-bold text-[#b3b3b3] uppercase tracking-wider block mb-1">Your Google Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. John Doe"
-                  value={bypassName}
-                  onChange={(e) => setBypassName(e.target.value)}
-                  className="w-full bg-[#181818] border border-[#3e3e3e] focus:border-[#8b5cf6] rounded px-3 py-2 text-white text-sm outline-none transition-colors"
-                  required
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-[#b3b3b3] uppercase tracking-wider block mb-1">Your Google Email / ID</label>
-                <input
-                  type="email"
-                  placeholder="your.google.email@gmail.com"
-                  value={bypassEmail}
-                  onChange={(e) => setBypassEmail(e.target.value)}
-                  className="w-full bg-[#181818] border border-[#3e3e3e] focus:border-[#8b5cf6] rounded px-3 py-2 text-white text-sm outline-none transition-colors"
-                  required
-                />
-              </div>
-              <button
-                type="submit"
-                className="w-full bg-gradient-to-r from-[#8b5cf6] to-[#ec4899] text-white font-bold text-sm rounded-full py-2.5 hover:scale-[1.01] transition-all cursor-pointer"
-              >
-                Launch Direct Google ID Session
-              </button>
-            </form>
-          )}
-        </div>
       </div>
     </div>
   );
@@ -379,14 +180,6 @@ function MainLayout() {
   }, [isAuthenticated, bypass]);
 
   useEffect(() => {
-    const localUserStr = localStorage.getItem('melodystream_local_logged_in_user');
-    let initialUser: User | null = null;
-    if (localUserStr) {
-      try {
-        initialUser = JSON.parse(localUserStr);
-      } catch (e) {}
-    }
-
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         if (user.isAnonymous) {
@@ -417,10 +210,17 @@ function MainLayout() {
           localStorage.setItem('melodystream_local_logged_in_user', JSON.stringify(customUser));
         }
         setFirebaseUser(user);
-      } else if (initialUser) {
-        setFirebaseUser(initialUser);
       } else {
-        setFirebaseUser(null);
+        const currentLocalUserStr = localStorage.getItem('melodystream_local_logged_in_user');
+        if (currentLocalUserStr) {
+          try {
+            setFirebaseUser(JSON.parse(currentLocalUserStr));
+          } catch (e) {
+            setFirebaseUser(null);
+          }
+        } else {
+          setFirebaseUser(null);
+        }
       }
       setLoading(false);
     });
