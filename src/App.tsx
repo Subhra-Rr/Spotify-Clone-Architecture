@@ -182,6 +182,7 @@ function MainLayout() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
+        localStorage.removeItem('melodystream_guest_session');
         if (user.isAnonymous) {
           const localUserStr = localStorage.getItem('melodystream_local_logged_in_user');
           if (localUserStr) {
@@ -211,13 +212,15 @@ function MainLayout() {
         }
         setFirebaseUser(user);
       } else {
-        const currentLocalUserStr = localStorage.getItem('melodystream_local_logged_in_user');
-        if (currentLocalUserStr) {
-          try {
-            setFirebaseUser(JSON.parse(currentLocalUserStr));
-          } catch (e) {
-            setFirebaseUser(null);
-          }
+        const isGuest = localStorage.getItem('melodystream_guest_session') === 'true';
+        if (isGuest) {
+          setFirebaseUser({
+            uid: 'guest_user',
+            displayName: 'Local Guest',
+            email: 'guest@example.com',
+            photoURL: null,
+            delete: async () => {},
+          } as any);
         } else {
           setFirebaseUser(null);
         }
@@ -231,6 +234,7 @@ function MainLayout() {
   }, []);
 
   const handleContinueAsGuest = () => {
+    localStorage.setItem('melodystream_guest_session', 'true');
     setFirebaseUser({
       uid: 'guest_user',
       displayName: 'Local Guest',
@@ -242,6 +246,7 @@ function MainLayout() {
 
   const handleLogout = () => {
     localStorage.removeItem('melodystream_local_logged_in_user');
+    localStorage.removeItem('melodystream_guest_session');
     signOut(auth).catch(() => {});
     setFirebaseUser(null);
   };
@@ -258,7 +263,7 @@ function MainLayout() {
     return <FirebaseAuthScreen onAuthSuccess={() => {}} onContinueAsGuest={handleContinueAsGuest} />;
   }
 
-  return <MelodyStreamDashboard onLogout={handleLogout} />;
+  return <MelodyStreamDashboard user={firebaseUser} onLogout={handleLogout} />;
 }
 
 export default function App() {

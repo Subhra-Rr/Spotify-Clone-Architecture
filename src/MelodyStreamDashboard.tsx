@@ -8,7 +8,7 @@ import { signInWithPopup, User, onAuthStateChanged, signOut, updateProfile } fro
 import { collection, addDoc, query, getDocs, doc, setDoc, serverTimestamp, deleteDoc, getDoc } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import md5 from 'md5';
-import * as jsmediatags from 'jsmediatags/dist/jsmediatags.min.js';
+
 import { categories, startBrowsingCategories } from './categories';
 import { PremiumPage } from './components/PremiumPage';
 import { useAudioDB } from './hooks/useAudioDB';
@@ -184,7 +184,7 @@ const MELODYSTREAM_BROWSE_ALL = [
   { id: 'c-podcharts', title: 'Podcast Charts', color: '#006450', coverUrl: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=300&h=300&fit=crop' },
 ];
 
-export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => void }) {
+export default function MelodyStreamDashboard({ user, onLogout }: { user: User; onLogout?: () => void }) {
   const { accessToken, logout } = useAuth();
   const { enhanceTracks, enhanceTrack } = useAudioDB();
   
@@ -283,7 +283,11 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
   const [sortBy, setSortBy] = useState<'relevance' | 'title' | 'artist' | 'duration'>('relevance');
   const [librarySortOption, setLibrarySortOption] = useState<'Recent' | 'Alphabetical' | 'Creator'>('Recent');
 
-  const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
+  const [firebaseUser, setFirebaseUser] = useState<User | null>(user);
+
+  useEffect(() => {
+    setFirebaseUser(user);
+  }, [user]);
   const [isUploading, setIsUploading] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
@@ -447,56 +451,7 @@ export default function MelodyStreamDashboard({ onLogout }: { onLogout?: () => v
     };
   }, []);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      if (u) {
-        if (u.isAnonymous) {
-          const localUserStr = localStorage.getItem('melodystream_local_logged_in_user');
-          if (localUserStr) {
-            try {
-              const localUser = JSON.parse(localUserStr);
-              if (localUser.uid === u.uid) {
-                setFirebaseUser({
-                  ...u,
-                  displayName: localUser.displayName || u.displayName,
-                  email: localUser.email || u.email,
-                  photoURL: localUser.photoURL || u.photoURL,
-                } as any);
-                return;
-              }
-            } catch (e) {}
-          }
-        } else {
-          // Keep localStorage updated for Google/Email auth
-          const customUser = {
-            uid: u.uid,
-            displayName: u.displayName || u.email?.split('@')[0] || "Listener",
-            email: u.email,
-            photoURL: u.photoURL,
-          };
-          localStorage.setItem('melodystream_local_logged_in_user', JSON.stringify(customUser));
-        }
-        setFirebaseUser(u);
-      } else {
-        const localUserStr = localStorage.getItem('melodystream_local_logged_in_user');
-        if (localUserStr) {
-          try {
-            setFirebaseUser(JSON.parse(localUserStr));
-            return;
-          } catch (e) {}
-        }
-        const savedPhoto = localStorage.getItem('spotify-clone-guest-photo');
-        setFirebaseUser({
-          uid: 'guest_user',
-          displayName: 'Local Guest',
-          email: 'guest@example.com',
-          photoURL: savedPhoto || null,
-          delete: async () => {},
-        } as any);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
+
 
   // Liked Songs are fetched from localStorage natively, the Firestore uploads persistence is cut.
 

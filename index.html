@@ -167,11 +167,86 @@
         );
       }
 
+      function showErrorOverlay(title, message, stack) {
+        // Prevent duplicate overlays
+        if (document.getElementById('debug-error-overlay')) return;
+        
+        const overlay = document.createElement('div');
+        overlay.id = 'debug-error-overlay';
+        overlay.style.position = 'fixed';
+        overlay.style.top = '15px';
+        overlay.style.left = '15px';
+        overlay.style.right = '15px';
+        overlay.style.bottom = '15px';
+        overlay.style.backgroundColor = '#1c0505';
+        overlay.style.color = '#ffcccc';
+        overlay.style.border = '2px solid #ff4444';
+        overlay.style.borderRadius = '12px';
+        overlay.style.padding = '24px';
+        overlay.style.fontFamily = 'monospace';
+        overlay.style.fontSize = '14px';
+        overlay.style.lineHeight = '1.6';
+        overlay.style.overflow = 'auto';
+        overlay.style.zIndex = '9999999';
+        overlay.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.7)';
+        
+        const heading = document.createElement('h2');
+        heading.innerText = '⚠️ MelodyStream Diagnostic Error Catcher';
+        heading.style.marginTop = '0';
+        heading.style.marginBottom = '12px';
+        heading.style.color = '#ff4444';
+        heading.style.fontSize = '18px';
+        heading.style.borderBottom = '1px solid #4a1515';
+        heading.style.paddingBottom = '8px';
+        
+        const titleEl = document.createElement('div');
+        titleEl.style.fontWeight = 'bold';
+        titleEl.style.fontSize = '15px';
+        titleEl.style.marginBottom = '12px';
+        titleEl.style.color = '#ffffff';
+        titleEl.innerText = title;
+        
+        const messageEl = document.createElement('pre');
+        messageEl.style.whiteSpace = 'pre-wrap';
+        messageEl.style.backgroundColor = '#0a0101';
+        messageEl.style.color = '#ff9999';
+        messageEl.style.padding = '16px';
+        messageEl.style.borderRadius = '6px';
+        messageEl.style.border = '1px solid #3a0b0b';
+        messageEl.style.margin = '0';
+        messageEl.innerText = message + (stack ? '\n\nStack:\n' + stack : '');
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.innerText = 'Dismiss Overlay';
+        closeBtn.style.marginTop = '16px';
+        closeBtn.style.padding = '8px 16px';
+        closeBtn.style.backgroundColor = '#ff4444';
+        closeBtn.style.color = '#ffffff';
+        closeBtn.style.border = 'none';
+        closeBtn.style.borderRadius = '6px';
+        closeBtn.style.cursor = 'pointer';
+        closeBtn.style.fontWeight = 'bold';
+        closeBtn.onclick = function() {
+          overlay.remove();
+        };
+
+        overlay.appendChild(heading);
+        overlay.appendChild(titleEl);
+        overlay.appendChild(messageEl);
+        overlay.appendChild(closeBtn);
+        document.body.appendChild(overlay);
+      }
+
       // Stop events from bubbling up to any other handlers or the workspace shell
       window.onerror = function(message, source, lineno, colno, error) {
         if (shouldSilenceError(message, source)) {
           return true; // Silence and stop propagation
         }
+        showErrorOverlay(
+          'Uncaught Error: ' + message,
+          'Source: ' + source + ' (line ' + lineno + ', col ' + colno + ')',
+          error ? error.stack : ''
+        );
       };
 
       window.onunhandledrejection = function(event) {
@@ -181,6 +256,11 @@
           event.preventDefault();
           return true; // Silence and stop propagation
         }
+        showErrorOverlay(
+          'Unhandled Promise Rejection',
+          msg,
+          reason ? reason.stack : ''
+        );
       };
 
       window.addEventListener('unhandledrejection', function(event) {
@@ -190,6 +270,12 @@
           event.preventDefault();
           event.stopPropagation();
           event.stopImmediatePropagation();
+        } else {
+          showErrorOverlay(
+            'Unhandled Promise Rejection',
+            msg,
+            reason ? reason.stack : ''
+          );
         }
       }, true);
 
@@ -200,6 +286,20 @@
           event.preventDefault();
           event.stopPropagation();
           event.stopImmediatePropagation();
+        } else {
+          if (event.target && (event.target.tagName === 'SCRIPT' || event.target.tagName === 'LINK')) {
+            showErrorOverlay(
+              'Failed to Load Resource',
+              'URL: ' + (event.target.src || event.target.href),
+              'This usually means a module import path is invalid or the build asset is missing.'
+            );
+          } else {
+            showErrorOverlay(
+              'Captured Window Error',
+              message,
+              event.error ? event.error.stack : ''
+            );
+          }
         }
       }, true);
     </script>
