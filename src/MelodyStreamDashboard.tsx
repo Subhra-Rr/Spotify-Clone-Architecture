@@ -228,6 +228,24 @@ export default function MelodyStreamDashboard({ user, onLogout }: { user: User; 
   const [isIOS, setIsIOS] = useState(false);
   const [installGuideMode, setInstallGuideMode] = useState<'iframe' | 'guide' | 'direct-prompt' | null>(null);
   const [installTab, setInstallTab] = useState<'android' | 'desktop' | 'ios'>('android');
+  const [isMobileView, setIsMobileView] = useState(false);
+
+  // Device-specific layout tracking (checks screen width, touch support, and User-Agent)
+  useEffect(() => {
+    const handleDeviceCheck = () => {
+      const isTouch = window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+      const isMobileUA = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(navigator.userAgent);
+      const width = window.innerWidth;
+      
+      // Force mobile view if width is under 1024px or if it is a mobile UA with width under 1200px
+      const useMobileLayout = width < 1024 || (isMobileUA && width < 1200) || (isTouch && width < 1024);
+      setIsMobileView(useMobileLayout);
+    };
+
+    handleDeviceCheck();
+    window.addEventListener('resize', handleDeviceCheck);
+    return () => window.removeEventListener('resize', handleDeviceCheck);
+  }, []);
 
   useEffect(() => {
     // 1. Check if app is running in standalone mode (installed as PWA)
@@ -1531,7 +1549,7 @@ export default function MelodyStreamDashboard({ user, onLogout }: { user: User; 
   });
 
   return (
-    <div className="flex flex-col h-screen bg-black text-white font-sans overflow-hidden select-none relative pb-[140px] md:pb-[90px]">
+    <div className={`flex flex-col h-screen bg-black text-white font-sans overflow-hidden select-none relative ${isMobileView ? 'pb-[140px]' : 'pb-[90px]'}`}>
       
       {isOffline && (
           <div className="absolute top-0 left-0 right-0 z-50 bg-[#e22134] text-white flex justify-center items-center py-2 text-sm font-bold shadow-lg">
@@ -1539,9 +1557,9 @@ export default function MelodyStreamDashboard({ user, onLogout }: { user: User; 
           </div>
       )}
 
-      <div className={`grid grid-cols-1 md:grid-cols-[300px_minmax(0,1fr)] ${isRightSidebarOpen && currentTrack ? 'xl:grid-cols-[300px_minmax(0,1fr)_auto]' : ''} overflow-hidden p-2 gap-2 h-full w-full`}>
+      <div className={`grid ${isMobileView ? 'grid-cols-1' : 'grid-cols-[300px_minmax(0,1fr)]'} ${!isMobileView && isRightSidebarOpen && currentTrack ? 'xl:grid-cols-[300px_minmax(0,1fr)_auto]' : ''} overflow-hidden p-2 gap-2 h-full w-full`}>
         
-        <div className="bg-black flex flex-col gap-2 border-r border-[#121212] hidden md:flex rounded-lg overflow-hidden h-full flex-shrink-0">
+        <div className={`bg-black flex flex-col gap-2 border-r border-[#121212] rounded-lg overflow-hidden h-full flex-shrink-0 ${isMobileView ? 'hidden' : 'flex'}`}>
           <div className="bg-[#121212] rounded-lg px-6 py-5 flex flex-col gap-6">
              <button 
                onClick={() => navigateTo('home')}
@@ -1695,7 +1713,7 @@ export default function MelodyStreamDashboard({ user, onLogout }: { user: User; 
                 {!isPremium && (
                    <button 
                      onClick={() => navigateTo('premium')} 
-                     className="hidden md:flex bg-white text-black text-sm font-bold px-4 py-[6px] rounded-full hover:scale-105 active:scale-95 transition-transform mr-2"
+                     className={`bg-white text-black text-sm font-bold px-4 py-[6px] rounded-full hover:scale-105 active:scale-95 transition-transform mr-2 ${isMobileView ? 'hidden' : 'flex'}`}
                    >
                      Explore Premium
                    </button>
@@ -2802,7 +2820,7 @@ export default function MelodyStreamDashboard({ user, onLogout }: { user: User; 
              )}
 
              {activeTab === 'library' && (
-                <div className="mt-8 md:hidden">
+                <div className={`mt-8 ${isMobileView ? 'block' : 'hidden'}`}>
                   <div className="flex justify-between items-center mb-6 mt-6">
                      <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full overflow-hidden bg-[#282828]">
@@ -2954,7 +2972,7 @@ export default function MelodyStreamDashboard({ user, onLogout }: { user: User; 
         initial={{ y: 100 }}
         animate={{ y: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        className="h-[90px] bg-black border-t border-[#282828] hidden md:flex items-center px-4 justify-between w-full z-50 fixed bottom-0 left-0 right-0 pb-2 pt-2"
+        className={`h-[90px] bg-black border-t border-[#282828] items-center px-4 justify-between w-full z-50 fixed bottom-0 left-0 right-0 pb-2 pt-2 ${isMobileView ? 'hidden' : 'flex'}`}
       >
         <div className="flex items-center gap-4 w-[30%] min-w-[180px]">
           <AnimatePresence mode="popLayout">
@@ -3100,7 +3118,7 @@ export default function MelodyStreamDashboard({ user, onLogout }: { user: User; 
 
       {/* Mobile Compact Player Overlay */}
       {currentTrack && (
-        <div className="md:hidden fixed bottom-[76px] left-2 right-2 bg-gradient-to-r from-[#1f1f1f] to-[#121212] rounded-[6px] flex items-center justify-between p-2 z-50 shadow-lg cursor-pointer" onClick={() => setIsMobilePlayerOpen(true)}>
+        <div className={`fixed bottom-[76px] left-2 right-2 bg-gradient-to-r from-[#1f1f1f] to-[#121212] rounded-[6px] flex items-center justify-between p-2 z-50 shadow-lg cursor-pointer ${isMobileView ? 'block' : 'hidden'}`} onClick={() => setIsMobilePlayerOpen(true)}>
           <div className="flex items-center gap-3 overflow-hidden flex-1">
             <div className="w-10 h-10 rounded overflow-hidden shrink-0 shadow-md">
               <img src={currentTrack.coverUrl || 'https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?q=80&w=200&auto=format&fit=crop'} className="w-full h-full object-cover" />
@@ -3138,7 +3156,7 @@ export default function MelodyStreamDashboard({ user, onLogout }: { user: User; 
       )}
 
       {/* Mobile Bottom Navigation Bar */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/95 to-transparent h-[80px] flex justify-between items-center px-6 pb-2 pt-6 z-40">
+      <div className={`fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/95 to-transparent h-[80px] flex justify-between items-center px-6 pb-2 pt-6 z-40 ${isMobileView ? 'flex' : 'hidden'}`}>
         <button onClick={() => navigateTo('home')} className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'home' ? 'text-white' : 'text-[#b3b3b3] hover:text-white'}`}>
           <Home className={`w-6 h-6 ${activeTab === 'home' ? 'fill-current' : ''}`} />
           <span className="text-[10px] mt-1">Home</span>
@@ -3167,7 +3185,7 @@ export default function MelodyStreamDashboard({ user, onLogout }: { user: User; 
                animate={{ y: 0 }}
                exit={{ y: '100%' }}
                transition={{ type: "spring", damping: 25, stiffness: 200 }}
-               className="md:hidden fixed inset-0 z-[100] bg-gradient-to-b from-[#4a3f3b] to-black flex flex-col pt-12 pb-8 overflow-y-auto"
+               className={`fixed inset-0 z-[100] bg-gradient-to-b from-[#4a3f3b] to-black flex flex-col pt-12 pb-8 overflow-y-auto ${isMobileView ? 'block' : 'hidden'}`}
             >
                <div className="px-6 flex flex-col flex-1 shrink-0 min-h-max">
                <div className="flex justify-between items-center mb-8 shrink-0">
