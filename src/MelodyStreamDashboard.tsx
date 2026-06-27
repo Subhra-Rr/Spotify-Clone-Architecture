@@ -3678,7 +3678,7 @@ export default function MelodyStreamDashboard({ user, onLogout }: { user: User; 
                       <div className="bg-[#242424] p-5 rounded-2xl border border-white/5 space-y-4 max-w-sm mx-auto shadow-inner">
                         <div className="relative w-20 h-20 mx-auto">
                           <img 
-                            src="/icon-192.png" 
+                            src="/icon.svg" 
                             alt="MelodyStream Logo" 
                             className="w-full h-full rounded-2xl shadow-lg border border-white/10"
                             referrerPolicy="no-referrer"
