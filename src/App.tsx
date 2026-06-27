@@ -34,7 +34,7 @@ function FirebaseAuthScreen({ onAuthSuccess, onContinueAsGuest }: { onAuthSucces
     <div className="flex flex-col min-h-screen bg-black items-center justify-center font-sans py-12 px-4">
       <div className="bg-[#121212] p-8 sm:p-12 rounded-lg w-full max-w-md shadow-2xl text-center border border-[#282828]">
         <div className="flex justify-center mb-6">
-          <Music className="w-16 h-16 text-[#8b5cf6]" />
+          <img src="/icon.svg" alt="MelodyStream Logo" className="w-20 h-20 shadow-[0_8px_30px_rgba(139,92,246,0.3)] rounded-2xl border border-white/10" />
         </div>
         <h1 className="text-3xl font-bold text-white tracking-tight mb-6 font-sans">
           Log in to MelodyStream
@@ -135,7 +135,7 @@ function MelodyStreamAuthScreen() {
   return (
     <div className="flex flex-col h-screen bg-black items-center justify-center font-sans">
       <div className="flex flex-col items-center gap-8 max-w-lg text-center pl-4 pr-4">
-        <Music className="w-24 h-24 text-[#8b5cf6]" />
+        <img src="/icon.svg" alt="MelodyStream Logo" className="w-28 h-28 shadow-[0_8px_30px_rgba(139,92,246,0.3)] rounded-3xl border border-white/10" />
         <h1 className="text-4xl font-bold text-white tracking-tight">
           Connect Music Library
         </h1>

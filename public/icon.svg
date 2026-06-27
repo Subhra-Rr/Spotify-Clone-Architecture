@@ -1,32 +1,131 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
-    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#8b5cf6;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#06b6d4;stop-opacity:1" />
+    <!-- Background Radial Glow -->
+    <radialGradient id="bgGlow" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#1e152a" />
+      <stop offset="60%" stop-color="#0c0714" />
+      <stop offset="100%" stop-color="#050308" />
+    </radialGradient>
+
+    <!-- Ultra Vibrant Pink/Violet/Cyan Gradients -->
+    <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff007f" />
+      <stop offset="40%" stop-color="#8b5cf6" />
+      <stop offset="100%" stop-color="#00f2fe" />
     </linearGradient>
-    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.5"/>
+
+    <linearGradient id="accentGrad" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#00f2fe" />
+      <stop offset="50%" stop-color="#9d4edd" />
+      <stop offset="100%" stop-color="#ff007f" />
+    </linearGradient>
+
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff9e00" />
+      <stop offset="100%" stop-color="#ff007f" />
+    </linearGradient>
+
+    <!-- Complex Glowing Filters -->
+    <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="10" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
     </filter>
+
+    <filter id="intenseNeon" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="18" result="blur1" />
+      <feGaussianBlur stdDeviation="6" result="blur2" />
+      <feMerge>
+        <feMergeNode in="blur1" />
+        <feMergeNode in="blur2" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000" flood-opacity="0.65" />
+    </filter>
+
+    <!-- Glass Reflection -->
+    <linearGradient id="glassReflection" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.15" />
+      <stop offset="40%" stop-color="#ffffff" stop-opacity="0.02" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </linearGradient>
   </defs>
-  <!-- Background -->
-  <rect width="512" height="512" rx="112" fill="#0c0a0f" />
-  <!-- Circle/Glow Ring -->
-  <circle cx="256" cy="256" r="180" fill="none" stroke="url(#grad1)" stroke-width="12" opacity="0.15" />
-  <circle cx="256" cy="256" r="140" fill="none" stroke="url(#grad1)" stroke-width="6" opacity="0.3" />
-  <!-- Main Musical Note Symbol -->
-  <g filter="url(#shadow)">
-    <!-- Note heads -->
-    <ellipse cx="190" cy="320" rx="35" ry="25" fill="url(#grad1)" transform="rotate(-15, 190, 320)" />
-    <ellipse cx="320" cy="285" rx="35" ry="25" fill="url(#grad1)" transform="rotate(-15, 320, 285)" />
-    <!-- Stems -->
-    <rect x="213" y="140" width="12" height="180" rx="4" fill="url(#grad1)" />
-    <rect x="343" y="105" width="12" height="180" rx="4" fill="url(#grad1)" />
-    <!-- Beam -->
-    <path d="M 213 140 L 355 105 L 355 145 L 213 180 Z" fill="url(#grad1)" />
-    <!-- Sound wave lines extending dynamically -->
-    <path d="M 120 200 A 80 80 0 0 1 120 312" fill="none" stroke="url(#grad1)" stroke-width="8" stroke-linecap="round" opacity="0.7" />
-    <path d="M 90 170 A 120 120 0 0 1 90 342" fill="none" stroke="url(#grad1)" stroke-width="8" stroke-linecap="round" opacity="0.4" />
-    <path d="M 392 200 A 80 80 0 0 1 392 312" fill="none" stroke="url(#grad1)" stroke-width="8" stroke-linecap="round" opacity="0.7" />
-    <path d="M 422 170 A 120 120 0 0 1 422 342" fill="none" stroke="url(#grad1)" stroke-width="8" stroke-linecap="round" opacity="0.4" />
+
+  <!-- Base Card Frame -->
+  <rect width="512" height="512" rx="120" fill="url(#bgGlow)" stroke="#1a122c" stroke-width="2" />
+
+  <!-- Outer Ambient Light Rings (Sound waves of the cosmos) -->
+  <g opacity="0.35" filter="url(#neonGlow)">
+    <circle cx="256" cy="256" r="190" fill="none" stroke="url(#accentGrad)" stroke-width="2" stroke-dasharray="8 12" />
+    <circle cx="256" cy="256" r="210" fill="none" stroke="url(#primaryGrad)" stroke-width="1.5" opacity="0.5" />
   </g>
+
+  <!-- Futuristic Equalizer Wave Ring -->
+  <g filter="url(#neonGlow)" opacity="0.85">
+    <!-- Circular soundwaves -->
+    <path d="M 256 96 A 160 160 0 0 1 392 200 L 404 194 A 175 175 0 0 0 256 80 Z" fill="url(#primaryGrad)" />
+    <path d="M 392 312 A 160 160 0 0 1 256 416 L 256 431 A 175 175 0 0 0 404 318 Z" fill="url(#primaryGrad)" />
+    <path d="M 256 416 A 160 160 0 0 1 120 312 L 108 318 A 175 175 0 0 0 256 431 Z" fill="url(#accentGrad)" />
+    <path d="M 120 200 A 160 160 0 0 1 256 96 L 256 80 A 175 175 0 0 0 108 194 Z" fill="url(#accentGrad)" />
+  </g>
+
+  <!-- Dynamic Equalizer Ribs / Bars emerging from the background -->
+  <g opacity="0.9" filter="url(#neonGlow)">
+    <!-- Top-Right Ribs -->
+    <line x1="375" y1="137" x2="395" y2="117" stroke="url(#primaryGrad)" stroke-width="4" stroke-linecap="round" />
+    <line x1="410" y1="185" x2="435" y2="175" stroke="url(#primaryGrad)" stroke-width="4" stroke-linecap="round" />
+    <!-- Bottom-Left Ribs -->
+    <line x1="137" y1="375" x2="117" y2="395" stroke="url(#accentGrad)" stroke-width="4" stroke-linecap="round" />
+    <line x1="102" y1="327" x2="77" y2="337" stroke="url(#accentGrad)" stroke-width="4" stroke-linecap="round" />
+    <!-- Top-Left Ribs -->
+    <line x1="137" y1="137" x2="117" y2="117" stroke="url(#accentGrad)" stroke-width="4" stroke-linecap="round" />
+    <line x1="102" y1="185" x2="77" y2="175" stroke="url(#accentGrad)" stroke-width="4" stroke-linecap="round" />
+    <!-- Bottom-Right Ribs -->
+    <line x1="375" y1="375" x2="395" y2="395" stroke="url(#primaryGrad)" stroke-width="4" stroke-linecap="round" />
+    <line x1="410" y1="327" x2="435" y2="337" stroke="url(#primaryGrad)" stroke-width="4" stroke-linecap="round" />
+  </g>
+
+  <!-- Central Vortex & Hologram Sphere -->
+  <circle cx="256" cy="256" r="140" fill="#08050e" opacity="0.9" filter="url(#dropShadow)" />
+  <circle cx="256" cy="256" r="140" fill="none" stroke="url(#primaryGrad)" stroke-width="3" opacity="0.4" />
+
+  <!-- The Stream Waves (Vibrant energy lines flowing through the center) -->
+  <g filter="url(#intenseNeon)">
+    <path d="M 130 256 Q 193 180 256 256 T 382 256" fill="none" stroke="url(#accentGrad)" stroke-width="4" stroke-linecap="round" opacity="0.8" />
+    <path d="M 130 256 Q 193 320 256 256 T 382 256" fill="none" stroke="url(#goldGrad)" stroke-width="3" stroke-linecap="round" opacity="0.6" />
+    <path d="M 130 256 Q 193 256 256 256 T 382 256" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" opacity="0.9" />
+  </g>
+
+  <!-- The Magnificent, Extraordinary Melody Note -->
+  <g filter="url(#dropShadow)">
+    <!-- Rounded note base glow shadows -->
+    <ellipse cx="205" cy="305" rx="38" ry="26" fill="url(#primaryGrad)" transform="rotate(-18, 205, 305)" filter="url(#neonGlow)" />
+    <ellipse cx="325" cy="265" rx="38" ry="26" fill="url(#accentGrad)" transform="rotate(-18, 325, 265)" filter="url(#neonGlow)" />
+
+    <!-- Sharp Stems -->
+    <path d="M 231 150 L 231 305" stroke="url(#primaryGrad)" stroke-width="11" stroke-linecap="round" />
+    <path d="M 351 110 L 351 265" stroke="url(#accentGrad)" stroke-width="11" stroke-linecap="round" />
+
+    <!-- Futuristic Connected Curved Beam with sleek dynamic wing tail -->
+    <path d="M 231 150 Q 291 125 351 110 L 351 145 Q 291 160 231 185 Z" fill="url(#primaryGrad)" />
+    <path d="M 351 110 Q 400 100 425 125 L 420 155 Q 395 135 351 145 Z" fill="url(#goldGrad)" opacity="0.9" />
+    <path d="M 231 150 Q 185 165 160 195 L 165 225 Q 190 200 231 185 Z" fill="url(#accentGrad)" opacity="0.7" />
+
+    <!-- Glowing Highlights (White core strokes for premium metallic 3D feel) -->
+    <ellipse cx="195" cy="300" rx="12" ry="6" fill="#ffffff" opacity="0.6" transform="rotate(-18, 195, 300)" />
+    <ellipse cx="315" cy="260" rx="12" ry="6" fill="#ffffff" opacity="0.6" transform="rotate(-18, 315, 260)" />
+    <line x1="234" y1="170" x2="234" y2="290" stroke="#ffffff" stroke-width="2" opacity="0.5" stroke-linecap="round" />
+    <line x1="354" y1="130" x2="354" y2="250" stroke="#ffffff" stroke-width="2" opacity="0.5" stroke-linecap="round" />
+  </g>
+
+  <!-- Play Ring Inner Triangle Overlay -->
+  <polygon points="248,236 248,276 280,256" fill="#ffffff" filter="url(#neonGlow)" opacity="0.9" />
+
+  <!-- Diagonal Lens Flare reflection effect across the entire icon face -->
+  <path d="M 0 120 Q 256 -40 512 120 L 512 0 L 0 0 Z" fill="url(#glassReflection)" />
 </svg>

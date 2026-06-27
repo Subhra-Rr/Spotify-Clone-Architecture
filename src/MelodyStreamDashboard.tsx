@@ -234,11 +234,12 @@ export default function MelodyStreamDashboard({ user, onLogout }: { user: User; 
   useEffect(() => {
     const handleDeviceCheck = () => {
       const isTouch = window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
-      const isMobileUA = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(navigator.userAgent);
+      const isMobileUA = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(navigator.userAgent) ||
+                         (navigator.maxTouchPoints && navigator.maxTouchPoints > 2 && /macintosh/i.test(navigator.userAgent));
       const width = window.innerWidth;
       
-      // Force mobile view if width is under 1024px or if it is a mobile UA with width under 1200px
-      const useMobileLayout = width < 1024 || (isMobileUA && width < 1200) || (isTouch && width < 1024);
+      // Force mobile/tablet layout if screen width is under 1150px OR it is a touch device OR mobile UA
+      const useMobileLayout = width < 1150 || isTouch || isMobileUA;
       setIsMobileView(useMobileLayout);
     };
 
@@ -1915,10 +1916,43 @@ export default function MelodyStreamDashboard({ user, onLogout }: { user: User; 
                     ))}
                   </div>
 
-                   <h2 className="text-2xl font-bold text-white mb-6 mt-10 tracking-tight hover:underline cursor-pointer inline-block">
+                   {/* Section: Popular Artists (Circular cards) */}
+                   {tracks.length > 0 && (
+                     <div className="mt-8 mb-6">
+                        <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 tracking-tight hover:underline cursor-pointer inline-block">
+                           Popular artists
+                        </h2>
+                        <div className="flex overflow-x-auto no-scrollbar gap-4 pb-4 scroll-smooth snap-x w-full">
+                           {(Array.from(new Set(tracks.map(t => t.artist))) as string[]).slice(0, 10).map((artistName, idx) => {
+                              const artistTrack = tracks.find(t => t.artist === artistName);
+                              const artistImg = artistTrack?.coverUrl || 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=150&auto=format&fit=crop';
+                              return (
+                                 <motion.div
+                                    key={`artist-circle-${artistName}-${idx}`}
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={() => navigateTo('artist', artistName)}
+                                    className="flex flex-col items-center gap-2 cursor-pointer shrink-0 snap-start w-[110px] group"
+                                 >
+                                    <div className="w-[96px] h-[96px] rounded-full overflow-hidden shadow-lg border border-[#282828] relative">
+                                       <img src={artistImg} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" alt={artistName} />
+                                       <div className="absolute inset-0 bg-black/10 group-hover:bg-black/35 transition-all duration-300 flex items-center justify-center">
+                                          <Play className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 transition-all duration-300 fill-current" />
+                                       </div>
+                                    </div>
+                                    <span className="text-xs font-bold text-[#eaeaea] text-center truncate w-full px-1">{artistName}</span>
+                                 </motion.div>
+                              );
+                           })}
+                        </div>
+                     </div>
+                   )}
+
+                   <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 mt-6 tracking-tight hover:underline cursor-pointer inline-block">
                      {playlists.length > 0 ? "Your Playlists" : "Recommended for You"}
                    </h2>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
+                   
+                   <div className={isMobileView ? "flex overflow-x-auto no-scrollbar gap-4 pb-4 scroll-smooth snap-x w-full" : "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6"}>
                      {displayItems.map((item: any, i: number) => {
                         const cover = item.images ? item.images[0]?.url : item.coverUrl;
                         const title = item.name || item.title;
@@ -1930,7 +1964,10 @@ export default function MelodyStreamDashboard({ user, onLogout }: { user: User; 
                               whileHover={{ scale: 1.04, y: -4, boxShadow: "0 20px 25px -5px rgba(0,0,0,0.5), 0 10px 10px -5px rgba(0,0,0,0.5)" }}
                               whileTap={{ scale: 0.96 }}
                               transition={{ type: "spring", stiffness: 350, damping: 20 }}
-                              className="bg-[#181818] p-4 rounded-md cursor-pointer hover:bg-[#282828] transition-all duration-300 group flex flex-col shadow-lg"
+                              className={isMobileView 
+                                ? "bg-[#181818] p-3 rounded-lg cursor-pointer hover:bg-[#282828] transition-all duration-300 flex flex-col shadow-lg w-[140px] sm:w-[160px] shrink-0 snap-start"
+                                : "bg-[#181818] p-4 rounded-md cursor-pointer hover:bg-[#282828] transition-all duration-300 group flex flex-col shadow-lg"
+                              }
                               onClick={() => {
                                  if (!item.images) handleTrackSelect(i, tracks);
                                  else {
@@ -1938,26 +1975,28 @@ export default function MelodyStreamDashboard({ user, onLogout }: { user: User; 
                                  }
                               }}
                             >
-                              <div className="relative aspect-square w-full mb-4 shadow-[0_8px_24px_rgba(0,0,0,0.5)] overflow-hidden rounded flex-shrink-0">
+                              <div className="relative aspect-square w-full mb-3 shadow-[0_8px_24px_rgba(0,0,0,0.5)] overflow-hidden rounded flex-shrink-0">
                                 <img src={cover || 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=100&auto=format&fit=crop'} className="object-cover w-full h-full bg-[#333]" alt="cover" />
                                 
                                 <button 
-                                  className={`absolute bottom-2 right-2 bg-[#8b5cf6] text-black w-12 h-12 rounded-full flex items-center justify-center shadow-xl hover:scale-105 hover:bg-[#a78bfa] transition-all transform duration-300 
-                                    ${(!item.images && queue === tracks && currentTrackIndex === i && isPlaying) ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0'}`}
+                                  className={`absolute bottom-2 right-2 bg-[#8b5cf6] text-black w-10 h-10 rounded-full flex items-center justify-center shadow-xl hover:scale-105 hover:bg-[#a78bfa] transition-all transform duration-300 
+                                    ${isMobileView ? 'opacity-100 translate-y-0' : (!item.images && queue === tracks && currentTrackIndex === i && isPlaying) ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0'}`}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     if (!item.images) {
                                       handleTrackSelect(i, tracks);
+                                    } else {
+                                      navigateTo('playlist', item.id);
                                     }
                                   }}
                                 >
-                                   {(!item.images && queue === tracks && currentTrackIndex === i && isPlaying) ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current ml-1" />}
+                                   {(!item.images && queue === tracks && currentTrackIndex === i && isPlaying) ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-0.5" />}
                                 </button>
                               </div>
-                              <div className="flex flex-col flex-1 h-full">
-                                 <h3 className="font-bold text-white text-[15px] truncate max-w-full pb-1">{title}</h3>
+                              <div className="flex flex-col flex-1 h-full min-w-0">
+                                 <h3 className="font-bold text-white text-[14px] sm:text-[15px] truncate max-w-full pb-0.5">{title}</h3>
                                  <p 
-                                    className="text-sm text-[#b3b3b3] hover:text-white hover:underline truncate max-w-full line-clamp-2 cursor-pointer"
+                                    className="text-xs sm:text-sm text-[#b3b3b3] hover:text-white hover:underline truncate max-w-full line-clamp-1 cursor-pointer"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       openArtistPage(subtitle);
@@ -1969,7 +2008,47 @@ export default function MelodyStreamDashboard({ user, onLogout }: { user: User; 
                             </motion.div>
                         );
                      })}
-                  </div>
+                   </div>
+
+                   {/* Section 4: Editor's Picks (Dynamic horizontal slider showing popular albums/tracks) */}
+                   {tracks.length > 4 && (
+                     <div className="mt-8 mb-6">
+                        <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 tracking-tight hover:underline cursor-pointer inline-block">
+                           Editor's Picks: No-Skip Playlists
+                        </h2>
+                        <div className={isMobileView ? "flex overflow-x-auto no-scrollbar gap-4 pb-4 scroll-smooth snap-x w-full" : "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6"}>
+                           {tracks.slice().reverse().slice(0, 8).map((track, idx) => (
+                              <motion.div
+                                 key={`editors-pick-${track.id}-${idx}`}
+                                 whileHover={{ scale: 1.04, y: -4 }}
+                                 whileTap={{ scale: 0.96 }}
+                                 className={isMobileView
+                                    ? "bg-[#181818] p-3 rounded-lg cursor-pointer hover:bg-[#282828] transition-all duration-300 flex flex-col shadow-lg w-[140px] sm:w-[160px] shrink-0 snap-start"
+                                    : "bg-[#181818] p-4 rounded-md cursor-pointer hover:bg-[#282828] transition-all duration-300 group flex flex-col shadow-lg"
+                                 }
+                                 onClick={() => handleTrackSelect(tracks.length - 1 - idx, tracks)}
+                              >
+                                 <div className="relative aspect-square w-full mb-3 shadow-[0_8px_24px_rgba(0,0,0,0.5)] overflow-hidden rounded flex-shrink-0">
+                                    <img src={track.coverUrl} className="object-cover w-full h-full bg-[#333]" alt="cover" />
+                                    <button
+                                       className="absolute bottom-2 right-2 bg-[#8b5cf6] text-black w-10 h-10 rounded-full flex items-center justify-center shadow-xl hover:scale-105 transition-all transform duration-300"
+                                       onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleTrackSelect(tracks.length - 1 - idx, tracks);
+                                       }}
+                                    >
+                                       <Play className="w-5 h-5 fill-current ml-0.5" />
+                                    </button>
+                                 </div>
+                                 <div className="flex flex-col flex-1 h-full min-w-0">
+                                    <h3 className="font-bold text-white text-[14px] sm:text-[15px] truncate max-w-full pb-0.5">{track.title}</h3>
+                                    <p className="text-xs sm:text-sm text-[#b3b3b3] truncate max-w-full">{track.artist}</p>
+                                 </div>
+                              </motion.div>
+                           ))}
+                        </div>
+                     </div>
+                   )}
                  </div>
                  )}
                 </>
