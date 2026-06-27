@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, SkipForward, SkipBack, Heart, Search, Home, Library, Volume2, Plus, ArrowLeft, ArrowRight, UserCircle2, Repeat, Repeat1, Shuffle, ListMusic, ListPlus, LogOut, Upload, Loader2, PanelRightClose, BadgeCheck, MoreHorizontal, X, VolumeX, ExternalLink, Share2, WifiOff, Trash2 } from 'lucide-react';
+import { Play, Pause, SkipForward, SkipBack, Heart, Search, Home, Library, Volume2, Plus, ArrowLeft, ArrowRight, UserCircle2, Repeat, Repeat1, Shuffle, ListMusic, ListPlus, LogOut, Upload, Loader2, PanelRightClose, BadgeCheck, MoreHorizontal, X, VolumeX, ExternalLink, Share2, WifiOff, Trash2, Download } from 'lucide-react';
 import { motion, AnimatePresence } from "motion/react";
 import YouTube from 'react-youtube';
 import { useAuth } from './MelodyStreamAuthContext';
@@ -219,6 +219,68 @@ export default function MelodyStreamDashboard({ user, onLogout }: { user: User; 
     setTimeout(() => {
       setToastNotification(prev => prev?.message === message ? null : prev);
     }, 4000);
+  };
+
+  // PWA Install States
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  const [showIOSInstallGuide, setShowIOSInstallGuide] = useState(false);
+
+  useEffect(() => {
+    // 1. Check if app is running in standalone mode (installed as PWA)
+    const isStandaloneMode = 
+      window.matchMedia('(display-mode: standalone)').matches || 
+      (navigator as any).standalone || 
+      document.referrer.includes('android-app://');
+    
+    setIsStandalone(isStandaloneMode);
+
+    // 2. Check if device is iOS (iPhone/iPad/iPod)
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    const isIOSDevice = /iphone|ipad|ipod/.test(userAgent) && !(window as any).MSStream;
+    setIsIOS(isIOSDevice);
+
+    // 3. Listen for browser installation readiness
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // 4. Listen for installation completion
+    const handleAppInstalled = () => {
+      setIsInstallable(false);
+      setDeferredPrompt(null);
+      setIsStandalone(true);
+      showToast('MelodyStream installed successfully on your device!', 'success');
+    };
+
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (isInstallable && deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setIsInstallable(false);
+        setDeferredPrompt(null);
+      }
+    } else if (isIOS) {
+      setShowIOSInstallGuide(true);
+    } else {
+      // Manual desktop / non-supporting browser guidance (Firefox, Brave, etc.)
+      showToast('To install: click on your browser menu (⋮ or ⋯) and select "Add to Home Screen" or "Install App".', 'info');
+    }
   };
 
   const [audioQuality, setAudioQuality] = useState(localStorage.getItem('audio_quality') || 'high');
@@ -1585,6 +1647,17 @@ export default function MelodyStreamDashboard({ user, onLogout }: { user: User; 
                  )}
              </div>
              <div className="flex items-center gap-2 relative" ref={profileMenuRef}>
+                {!isStandalone && (
+                   <button 
+                     onClick={handleInstallClick}
+                     className="flex items-center gap-1.5 bg-[#8b5cf6] text-white hover:bg-[#7c3aed] text-xs sm:text-sm font-bold px-3 sm:px-4 py-[6px] rounded-full hover:scale-105 active:scale-95 transition-transform mr-1 border border-violet-400/20 shadow-[0_0_12px_rgba(139,92,246,0.3)] shrink-0 animate-fade-in"
+                     title="Install MelodyStream on your device"
+                   >
+                     <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-bounce" />
+                     <span className="hidden sm:inline">Install App</span>
+                     <span className="sm:hidden">Install</span>
+                   </button>
+                )}
                 {!isPremium && (
                    <button 
                      onClick={() => navigateTo('premium')} 
@@ -3511,6 +3584,68 @@ export default function MelodyStreamDashboard({ user, onLogout }: { user: User; 
        )}
 
        {/* Custom Advanced Settings Modal */}
+        {showIOSInstallGuide && (
+           <div id="ios-install-guide-modal" className="fixed inset-0 bg-black/80 z-[250] flex items-center justify-center p-4 backdrop-blur-sm">
+              <div className="bg-[#181818] rounded-2xl w-full max-w-md p-6 relative animate-fade-in border border-[#282828] shadow-[0_20px_50px_rgba(0,0,0,0.8)] text-white font-sans">
+                 <button 
+                    onClick={() => setShowIOSInstallGuide(false)}
+                    className="absolute top-4 right-4 text-[#b3b3b3] hover:text-white transition-colors"
+                 >
+                    <X className="w-5 h-5" />
+                 </button>
+                 
+                 <div className="text-center pb-2">
+                    <div className="w-16 h-16 bg-[#8b5cf6]/10 text-[#8b5cf6] rounded-2xl flex items-center justify-center mx-auto mb-3 border border-[#8b5cf6]/20">
+                       <Download className="w-8 h-8 text-[#8b5cf6]" />
+                    </div>
+                    <h3 className="text-xl font-bold text-white">Install MelodyStream</h3>
+                    <p className="text-[#b3b3b3] text-xs mt-1">Get a native app experience on your iOS device</p>
+                 </div>
+
+                 <div className="space-y-3.5 my-5 text-[14px] text-gray-300 font-sans">
+                    <div className="flex gap-3 items-start bg-[#242424] p-3 rounded-xl border border-white/5">
+                       <div className="w-6 h-6 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">1</div>
+                       <div>
+                          <p className="font-semibold text-white">Open in Safari Browser</p>
+                          <p className="text-[#b3b3b3] text-xs mt-0.5">This installation guide is for the Apple Safari browser on iOS.</p>
+                       </div>
+                    </div>
+
+                    <div className="flex gap-3 items-start bg-[#242424] p-3 rounded-xl border border-white/5">
+                       <div className="w-6 h-6 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">2</div>
+                       <div>
+                          <p className="font-semibold text-white">Tap the Share Button</p>
+                          <p className="text-[#b3b3b3] text-xs mt-0.5">Tap the Share icon <span className="bg-[#3e3e3e] px-1.5 py-0.5 rounded text-white text-[11px] font-mono">⎋</span> or action button at the bottom of your Safari window.</p>
+                       </div>
+                    </div>
+
+                    <div className="flex gap-3 items-start bg-[#242424] p-3 rounded-xl border border-white/5">
+                       <div className="w-6 h-6 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">3</div>
+                       <div>
+                          <p className="font-semibold text-white">Select "Add to Home Screen"</p>
+                          <p className="text-[#b3b3b3] text-xs mt-0.5">Scroll down the share sheet options and tap <strong className="text-white">"Add to Home Screen"</strong>.</p>
+                       </div>
+                    </div>
+
+                    <div className="flex gap-3 items-start bg-[#242424] p-3 rounded-xl border border-white/5">
+                       <div className="w-6 h-6 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">4</div>
+                       <div>
+                          <p className="font-semibold text-white">Confirm Installation</p>
+                          <p className="text-[#b3b3b3] text-xs mt-0.5">Tap <strong className="text-[#a78bfa]">"Add"</strong> in the top-right corner. MelodyStream will appear on your home screen!</p>
+                       </div>
+                    </div>
+                 </div>
+
+                 <button
+                    onClick={() => setShowIOSInstallGuide(false)}
+                    className="w-full py-2.5 rounded-xl bg-[#8b5cf6] text-white font-bold hover:bg-[#7c3aed] hover:scale-[1.01] active:scale-[0.99] transition-all text-sm"
+                 >
+                    Got It
+                 </button>
+              </div>
+           </div>
+        )}
+
        {isSettingsModalOpen && (
          <div id="advanced-settings-modal" className="fixed inset-0 bg-black/80 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
            <div className="bg-[#181818] rounded-lg w-full max-w-lg p-6 border border-[#282828] shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative animate-fade-in text-white font-sans">

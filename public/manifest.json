@@ -1,0 +1,30 @@
+{
+  "name": "MelodyStream Music",
+  "short_name": "MelodyStream",
+  "description": "High-fidelity modern music streaming platform with immersive dark design.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c0a0f",
+  "theme_color": "#8b5cf6",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512 any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

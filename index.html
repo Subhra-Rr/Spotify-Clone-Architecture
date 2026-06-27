@@ -6,9 +6,21 @@
     <meta name="theme-color" content="#121212" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="MelodyStream" />
     <title>MelodyStream</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎵</text></svg>" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <script>
+      // Register PWA service worker
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('MelodyStream PWA Service Worker registered:', reg.scope))
+            .catch(err => console.warn('MelodyStream PWA Service Worker registration failed:', err));
+        });
+      }
+
       // Complete isolation of WebSocket or HMR connectivity failures
       (function() {
         const OriginalWebSocket = window.WebSocket;
@@ -287,13 +299,20 @@
           event.stopPropagation();
           event.stopImmediatePropagation();
         } else {
-          if (event.target && (event.target.tagName === 'SCRIPT' || event.target.tagName === 'LINK')) {
-            showErrorOverlay(
-              'Failed to Load Resource',
-              'URL: ' + (event.target.src || event.target.href),
-              'This usually means a module import path is invalid or the build asset is missing.'
-            );
-          } else {
+          if (event.target && event.target.tagName) {
+            const tag = event.target.tagName.toUpperCase();
+            if (tag === 'SCRIPT' || tag === 'LINK') {
+              showErrorOverlay(
+                'Failed to Load Resource',
+                'URL: ' + (event.target.src || event.target.href),
+                'This usually means a module import path is invalid or the build asset is missing.'
+              );
+            }
+            // Ignore other DOM element-level error events (like IMG, AUDIO, VIDEO loading issues)
+            return;
+          }
+          
+          if (message) {
             showErrorOverlay(
               'Captured Window Error',
               message,
