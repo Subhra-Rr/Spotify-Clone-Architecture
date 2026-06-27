@@ -3689,24 +3689,6 @@ export default function MelodyStreamDashboard({ user, onLogout }: { user: User; 
                         </div>
                         <div>
                           <h4 className="text-lg font-bold text-white">MelodyStream Music</h4>
-                          <p className="text-xs text-[#8b5cf6] font-semibold mt-0.5">Verified PWA App Store Package</p>
-                        </div>
-                        
-                        <div className="flex items-center justify-center gap-4 py-1.5 border-y border-[#2a2a2a] text-xs text-[#b3b3b3]">
-                          <div>
-                            <span className="block text-white font-bold text-[14px]">4.9 ★</span>
-                            <span>Rating</span>
-                          </div>
-                          <div className="w-px h-6 bg-[#2a2a2a]"></div>
-                          <div>
-                            <span className="block text-white font-bold text-[14px]">100%</span>
-                            <span>Natively Secure</span>
-                          </div>
-                          <div className="w-px h-6 bg-[#2a2a2a]"></div>
-                          <div>
-                            <span className="block text-white font-bold text-[14px]">No Files</span>
-                            <span>Direct Setup</span>
-                          </div>
                         </div>
                         
                         <p className="text-xs text-[#b3b3b3] leading-relaxed">
