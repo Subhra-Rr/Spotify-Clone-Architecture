@@ -17,6 +17,7 @@
     "@tailwindcss/vite": "^4.1.14",
     "@types/jsmediatags": "^3.9.6",
     "@vitejs/plugin-react": "^5.0.4",
+    "adm-zip": "^0.5.17",
     "axios": "^1.17.0",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.4.2",

@@ -3,6 +3,8 @@ import path from "path";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import YTMusic from "ytmusic-api";
+import fs from "fs";
+import AdmZip from "adm-zip";
 
 // Fix tsx __dirname issue where globalThis.__dirname is set to "."
 // This is critical because some third-party packages like vite-plugin-pwa check
@@ -18,6 +20,17 @@ dotenv.config();
 
 const app = express();
 const PORT = 3000;
+
+// Custom CORS middleware to allow standalone desktop clients (e.g., file://) to query our backend endpoints
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, PATCH, DELETE");
+  res.setHeader("Access-Control-Allow-Headers", "X-Requested-With,content-type,Authorization");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 app.use(express.json());
 app.use(cookieParser());
