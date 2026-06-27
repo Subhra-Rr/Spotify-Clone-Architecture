@@ -1550,7 +1550,7 @@ export default function MelodyStreamDashboard({ user, onLogout }: { user: User; 
   });
 
   return (
-    <div className={`flex flex-col h-screen bg-black text-white font-sans overflow-hidden select-none relative ${isMobileView ? 'pb-[140px]' : 'pb-[90px]'}`}>
+    <div className={`flex flex-col h-screen bg-black text-white font-sans overflow-hidden select-none relative ${isMobileView ? 'pb-[calc(140px+env(safe-area-inset-bottom,0px))]' : 'pb-[90px]'}`}>
       
       {isOffline && (
           <div className="absolute top-0 left-0 right-0 z-50 bg-[#e22134] text-white flex justify-center items-center py-2 text-sm font-bold shadow-lg">
@@ -3197,7 +3197,7 @@ export default function MelodyStreamDashboard({ user, onLogout }: { user: User; 
 
       {/* Mobile Compact Player Overlay */}
       {currentTrack && (
-        <div className={`fixed bottom-[76px] left-2 right-2 bg-gradient-to-r from-[#1f1f1f] to-[#121212] rounded-[6px] flex items-center justify-between p-2 z-50 shadow-lg cursor-pointer ${isMobileView ? 'block' : 'hidden'}`} onClick={() => setIsMobilePlayerOpen(true)}>
+        <div className={`fixed bottom-[calc(68px+env(safe-area-inset-bottom,0px))] left-2 right-2 bg-gradient-to-r from-[#1f1f1f] to-[#121212] rounded-[6px] flex items-center justify-between p-2 z-50 shadow-lg cursor-pointer ${isMobileView ? 'block' : 'hidden'}`} onClick={() => setIsMobilePlayerOpen(true)}>
           <div className="flex items-center gap-3 overflow-hidden flex-1">
             <div className="w-10 h-10 rounded overflow-hidden shrink-0 shadow-md">
               <img src={currentTrack.coverUrl || 'https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?q=80&w=200&auto=format&fit=crop'} className="w-full h-full object-cover" />
@@ -3235,7 +3235,7 @@ export default function MelodyStreamDashboard({ user, onLogout }: { user: User; 
       )}
 
       {/* Mobile Bottom Navigation Bar */}
-      <div className={`fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/95 to-transparent h-[80px] flex justify-between items-center px-6 pb-2 pt-6 z-40 ${isMobileView ? 'flex' : 'hidden'}`}>
+      <div className={`fixed bottom-0 left-0 right-0 bg-black/95 border-t border-[#282828]/60 backdrop-blur-md h-[calc(64px+env(safe-area-inset-bottom,0px))] flex justify-between items-center px-6 pb-[calc(env(safe-area-inset-bottom,0px)+8px)] pt-3 z-40 ${isMobileView ? 'flex' : 'hidden'}`}>
         <button onClick={() => navigateTo('home')} className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'home' ? 'text-white' : 'text-[#b3b3b3] hover:text-white'}`}>
           <Home className={`w-6 h-6 ${activeTab === 'home' ? 'fill-current' : ''}`} />
           <span className="text-[10px] mt-1">Home</span>
@@ -3264,7 +3264,7 @@ export default function MelodyStreamDashboard({ user, onLogout }: { user: User; 
                animate={{ y: 0 }}
                exit={{ y: '100%' }}
                transition={{ type: "spring", damping: 25, stiffness: 200 }}
-               className={`fixed inset-0 z-[100] bg-gradient-to-b from-[#4a3f3b] to-black flex flex-col pt-12 pb-8 overflow-y-auto ${isMobileView ? 'block' : 'hidden'}`}
+               className={`fixed inset-0 z-[100] bg-gradient-to-b from-[#4a3f3b] to-black flex flex-col pt-[calc(env(safe-area-inset-top,0px)+24px)] pb-[calc(env(safe-area-inset-bottom,0px)+24px)] overflow-y-auto overscroll-behavior-y-contain ${isMobileView ? 'block' : 'hidden'}`}
             >
                <div className="px-6 flex flex-col flex-1 shrink-0 min-h-max">
                <div className="flex justify-between items-center mb-8 shrink-0">
@@ -3436,7 +3436,7 @@ export default function MelodyStreamDashboard({ user, onLogout }: { user: User; 
 
        {/* Beautiful Spotify-style Toast Notification Banner */}
        {toastNotification && (
-         <div id="melodystream-custom-toast" className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[300] flex items-center gap-3 bg-[#282828] text-white px-5 py-3 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.5)] border border-[#ffffff1a] animate-fade-in pointer-events-none transition-all duration-300">
+         <div id="melodystream-custom-toast" className={`fixed left-1/2 -translate-x-1/2 z-[300] flex items-center gap-3 bg-[#282828] text-white px-5 py-3 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.5)] border border-[#ffffff1a] animate-fade-in pointer-events-none transition-all duration-300 ${isMobileView ? 'bottom-[calc(148px+env(safe-area-inset-bottom,0px))]' : 'bottom-24'}`}>
            {toastNotification.type === 'error' ? (
              <div className="w-5 h-5 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center font-bold text-[12px]">!</div>
            ) : toastNotification.type === 'success' ? (

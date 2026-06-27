@@ -26,6 +26,30 @@ html, body, #root {
   position: fixed;
 }
 
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+@utility mb-safe {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@utility mt-safe {
+  margin-top: env(safe-area-inset-top, 0px);
+}
+
+@utility bottom-safe {
+  bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@utility top-safe {
+  top: env(safe-area-inset-top, 0px);
+}
+
 /* Custom Scrollbar for MelodyStream look */
 .custom-scrollbar::-webkit-scrollbar {
   width: 12px;
