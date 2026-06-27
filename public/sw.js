@@ -64,7 +64,23 @@ self.addEventListener('fetch', (event) => {
         }).catch(() => { /* Offline fallback */ });
         return cachedResponse;
       }
-      return fetch(event.request);
+      
+      // Not in cache, fetch from network and cache it dynamically if same-origin and successful
+      return fetch(event.request).then((networkResponse) => {
+        // Only cache valid GET responses from the same origin to avoid caching opaque third-party scripts or errors
+        if (
+          networkResponse && 
+          networkResponse.status === 200 && 
+          networkResponse.type === 'basic' &&
+          event.request.method === 'GET'
+        ) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return networkResponse;
+      });
     }).catch(() => {
       // Return offline index.html shell for page-level navigation failures
       if (event.request.mode === 'navigate') {
