@@ -14,6 +14,16 @@
     <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <script>
+      // Capture PWA installation prompt globally before React loads
+      window.deferredPrompt = null;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        window.deferredPrompt = e;
+        if (window.onBeforeInstallPromptReady) {
+          window.onBeforeInstallPromptReady(e);
+        }
+      });
+
       // Register PWA service worker
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
