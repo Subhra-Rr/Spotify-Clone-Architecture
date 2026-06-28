@@ -460,18 +460,6 @@ export default function MelodyStreamDashboard({
     const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault();
 
-      // Do not handle install prompts or show installable option on mobile or tablet devices
-      const isMobileUA =
-        /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
-          navigator.userAgent,
-        ) ||
-        (navigator.maxTouchPoints &&
-          navigator.maxTouchPoints > 2 &&
-          /macintosh/i.test(navigator.userAgent));
-      if (isMobileUA) {
-        return;
-      }
-
       setDeferredPrompt(e);
       setIsInstallable(true);
 
@@ -512,16 +500,9 @@ export default function MelodyStreamDashboard({
 
     window.addEventListener("appinstalled", handleAppInstalled);
 
-    // Check if redirect has ?install=true and deferredPrompt is already caught (and we are NOT on mobile/tablet)
-    const isMobileUA =
-      /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
-        navigator.userAgent,
-      ) ||
-      (navigator.maxTouchPoints &&
-        navigator.maxTouchPoints > 2 &&
-        /macintosh/i.test(navigator.userAgent));
+    // Check if redirect has ?install=true and deferredPrompt is already caught
     const queryParams = new URLSearchParams(window.location.search);
-    if (queryParams.get("install") === "true" && !isMobileUA) {
+    if (queryParams.get("install") === "true") {
       const isInIframe = window.self !== window.top;
       if (!isInIframe) {
         // Trigger direct prompt if event was already captured, otherwise let beforeinstallprompt handle it when it fires
@@ -542,28 +523,17 @@ export default function MelodyStreamDashboard({
   }, []);
 
   const handleInstallClick = async () => {
-    // Prevent installation on mobile or tablet devices as requested
-    const isMobileUA =
-      /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
-        navigator.userAgent,
-      ) ||
-      (navigator.maxTouchPoints &&
-        navigator.maxTouchPoints > 2 &&
-        /macintosh/i.test(navigator.userAgent));
-    if (isMobileUA) {
-      showToast(
-        "MelodyStream is fully optimized as a mobile web application!",
-        "info",
-      );
-      return;
-    }
-
     const isInIframe = window.self !== window.top;
     if (isInIframe) {
       // PWA installation is blocked inside iframes by browsers. Redirect user to a new dedicated tab immediately.
       window.open(window.location.origin + "?install=true", "_blank");
       return;
     }
+
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isIOSDevice = /iphone|ipad|ipod/.test(userAgent) || 
+      (navigator.maxTouchPoints && navigator.maxTouchPoints > 2 && /macintosh/i.test(navigator.userAgent));
+    const isAndroid = /android/i.test(userAgent);
 
     if (deferredPrompt) {
       try {
@@ -576,12 +546,25 @@ export default function MelodyStreamDashboard({
           showToast("MelodyStream installed successfully!", "success");
         }
       } catch (err) {
-        console.warn("PWA prompt error:", err);
+        console.warn("Direct install prompt error:", err);
         // Fallback to direct prompt modal if direct call failed
-        setInstallGuideMode("direct-prompt");
+        if (isIOSDevice) {
+          setInstallTab("ios");
+        } else if (isAndroid) {
+          setInstallTab("android");
+        } else {
+          setInstallTab("desktop");
+        }
+        setInstallGuideMode("guide");
       }
     } else {
-      setInstallTab("desktop");
+      if (isIOSDevice) {
+        setInstallTab("ios");
+      } else if (isAndroid) {
+        setInstallTab("android");
+      } else {
+        setInstallTab("desktop");
+      }
       setInstallGuideMode("guide");
     }
   };
@@ -2287,7 +2270,7 @@ export default function MelodyStreamDashboard({
               className="flex items-center gap-2 relative"
               ref={profileMenuRef}
             >
-              {!isStandalone && !isMobileOrTabletDevice && (
+              {!isStandalone && (
                 <button
                   onClick={handleInstallClick}
                   className="flex items-center gap-1.5 bg-[#8b5cf6] text-white hover:bg-[#7c3aed] text-xs sm:text-sm font-bold px-3 sm:px-4 py-[6px] rounded-full hover:scale-105 active:scale-95 transition-transform mr-1 border border-violet-400/20 shadow-[0_0_12px_rgba(139,92,246,0.3)] shrink-0 animate-fade-in"
@@ -5423,67 +5406,166 @@ export default function MelodyStreamDashboard({
               </div>
             ) : (
               <div className="my-4 font-sans text-[14px] text-gray-300">
-                {/* PC & Laptop Installation Guide only */}
-                <div className="space-y-3.5">
-                  <p className="text-xs text-[#b3b3b3] leading-relaxed">
-                    Install MelodyStream directly as a standalone native-grade
-                    desktop application on your PC, laptop, or Mac with a
-                    single click (absolutely no .zip file downloads or
-                    launchers required):
-                  </p>
-                  <div className="flex gap-3 items-start bg-[#242424] p-3 rounded-xl border border-white/5">
-                    <div className="w-6 h-6 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
-                      1
-                    </div>
-                    <div>
-                      <p className="font-semibold text-white">
-                        Look at the URL/Address Bar
-                      </p>
-                      <p className="text-[#b3b3b3] text-xs mt-0.5">
-                        In Chrome, Edge, or Brave, click the **Install Icon**
-                        (computer screen with a down arrow, or plus{" "}
-                        <strong className="text-white">+</strong> icon) next to
-                        the URL.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex gap-3 items-start bg-[#242424] p-3 rounded-xl border border-white/5">
-                    <div className="w-6 h-6 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
-                      2
-                    </div>
-                    <div>
-                      <p className="font-semibold text-white">
-                        Or Use Browser Menu
-                      </p>
-                      <p className="text-[#b3b3b3] text-xs mt-0.5">
-                        Open browser settings (three dots{" "}
-                        <strong className="text-white">⋮</strong>) and select{" "}
-                        <strong className="text-[#a78bfa]">
-                          "Install MelodyStream..."
-                        </strong>{" "}
-                        or{" "}
-                        <strong className="text-[#a78bfa]">
-                          "Save and share" → "Install page as app"
-                        </strong>
-                        .
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex gap-3 items-start bg-[#242424] p-3 rounded-xl border border-white/5">
-                    <div className="w-6 h-6 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
-                      3
-                    </div>
-                    <div>
-                      <p className="font-semibold text-white">
-                        Enjoy borderless native app
-                      </p>
-                      <p className="text-[#b3b3b3] text-xs mt-0.5">
-                        This adds a high-fidelity launch icon to your
-                        Applications, Desktop, and Start Menu/Dock!
-                      </p>
-                    </div>
-                  </div>
+                {/* Modern Multi-Platform Device Tabs */}
+                <div className="flex bg-[#242424] p-1 rounded-xl gap-1 mb-5">
+                  <button
+                    onClick={() => setInstallTab("android")}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      installTab === "android"
+                        ? "bg-[#8b5cf6] text-white shadow-md"
+                        : "text-[#b3b3b3] hover:text-white hover:bg-[#2e2e2e]"
+                    }`}
+                  >
+                    <Smartphone className="w-3.5 h-3.5" />
+                    <span>Android / Mobile</span>
+                  </button>
+                  <button
+                    onClick={() => setInstallTab("desktop")}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      installTab === "desktop"
+                        ? "bg-[#8b5cf6] text-white shadow-md"
+                        : "text-[#b3b3b3] hover:text-white hover:bg-[#2e2e2e]"
+                    }`}
+                  >
+                    <Laptop className="w-3.5 h-3.5" />
+                    <span>PC & Laptop</span>
+                  </button>
+                  <button
+                    onClick={() => setInstallTab("ios")}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      installTab === "ios"
+                        ? "bg-[#8b5cf6] text-white shadow-md"
+                        : "text-[#b3b3b3] hover:text-white hover:bg-[#2e2e2e]"
+                    }`}
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    <span>iOS (iPhone / iPad)</span>
+                  </button>
                 </div>
+
+                {/* Tab Panels */}
+                {installTab === "android" && (
+                  <div className="space-y-3.5">
+                    <p className="text-xs text-[#b3b3b3] leading-relaxed">
+                      Enjoy uninterrupted background music streaming by installing the native-grade Android application directly from your browser:
+                    </p>
+                    <div className="flex gap-3 items-start bg-[#242424] p-3 rounded-xl border border-white/5">
+                      <div className="w-6 h-6 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                        1
+                      </div>
+                      <div>
+                        <p className="font-semibold text-white">Open in Chrome or Edge</p>
+                        <p className="text-[#b3b3b3] text-xs mt-0.5">
+                          Ensure you are opening this site in Chrome, Edge, or Samsung Internet browser on your Android device.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-3 items-start bg-[#242424] p-3 rounded-xl border border-white/5">
+                      <div className="w-6 h-6 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                        2
+                      </div>
+                      <div>
+                        <p className="font-semibold text-white">Tap "Install App" or Menu</p>
+                        <p className="text-[#b3b3b3] text-xs mt-0.5">
+                          Tap the violet <strong className="text-white">"Install App"</strong> button at the top, or click the browser menu (three dots <strong className="text-white">⋮</strong>) and choose <strong className="text-white">"Install app"</strong> or <strong className="text-white">"Add to Home screen"</strong>.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-3 items-start bg-[#242424] p-3 rounded-xl border border-white/5">
+                      <div className="w-6 h-6 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                        3
+                      </div>
+                      <div>
+                        <p className="font-semibold text-white">Confirm Installation</p>
+                        <p className="text-[#b3b3b3] text-xs mt-0.5">
+                          Tap "Install" on the pop-up. The app is added immediately to your device app drawer and home screen!
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {installTab === "desktop" && (
+                  <div className="space-y-3.5">
+                    <p className="text-xs text-[#b3b3b3] leading-relaxed">
+                      Install MelodyStream directly as a standalone native-grade desktop application on your PC, laptop, or Mac with a single click (absolutely no .zip file downloads or launchers required):
+                    </p>
+                    <div className="flex gap-3 items-start bg-[#242424] p-3 rounded-xl border border-white/5">
+                      <div className="w-6 h-6 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                        1
+                      </div>
+                      <div>
+                        <p className="font-semibold text-white">Look at the URL/Address Bar</p>
+                        <p className="text-[#b3b3b3] text-xs mt-0.5">
+                          In Chrome, Edge, or Brave, click the **Install Icon** (computer screen with a down arrow, or plus <strong className="text-white">+</strong> icon) next to the URL.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-3 items-start bg-[#242424] p-3 rounded-xl border border-white/5">
+                      <div className="w-6 h-6 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                        2
+                      </div>
+                      <div>
+                        <p className="font-semibold text-white">Or Use Browser Menu</p>
+                        <p className="text-[#b3b3b3] text-xs mt-0.5">
+                          Open browser settings (three dots <strong className="text-white">⋮</strong>) and select <strong className="text-[#a78bfa]">"Install MelodyStream..."</strong> or <strong className="text-[#a78bfa]">"Save and share" → "Install page as app"</strong>.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-3 items-start bg-[#242424] p-3 rounded-xl border border-white/5">
+                      <div className="w-6 h-6 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                        3
+                      </div>
+                      <div>
+                        <p className="font-semibold text-white">Enjoy borderless native app</p>
+                        <p className="text-[#b3b3b3] text-xs mt-0.5">
+                          This adds a high-fidelity launch icon to your Applications, Desktop, and Start Menu/Dock!
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {installTab === "ios" && (
+                  <div className="space-y-3.5">
+                    <p className="text-xs text-[#b3b3b3] leading-relaxed">
+                      Install MelodyStream natively on your iPhone or iPad using the Apple iOS Safari engine:
+                    </p>
+                    <div className="flex gap-3 items-start bg-[#242424] p-3 rounded-xl border border-white/5">
+                      <div className="w-6 h-6 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                        1
+                      </div>
+                      <div>
+                        <p className="font-semibold text-white">Open in Safari</p>
+                        <p className="text-[#b3b3b3] text-xs mt-0.5">
+                          Navigate to MelodyStream using the native iOS Apple Safari browser.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-3 items-start bg-[#242424] p-3 rounded-xl border border-white/5">
+                      <div className="w-6 h-6 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                        2
+                      </div>
+                      <div>
+                        <p className="font-semibold text-white">Tap Share Button</p>
+                        <p className="text-[#b3b3b3] text-xs mt-0.5">
+                          Tap the Share icon <span className="bg-[#3e3e3e] px-1.5 py-0.5 rounded text-white text-[11px] font-mono">⎋</span> on Safari's bottom navigation bar.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-3 items-start bg-[#242424] p-3 rounded-xl border border-white/5">
+                      <div className="w-6 h-6 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                        3
+                      </div>
+                      <div>
+                        <p className="font-semibold text-white">Select "Add to Home Screen"</p>
+                        <p className="text-[#b3b3b3] text-xs mt-0.5">
+                          Scroll down the popup list, tap <strong className="text-white">"Add to Home Screen"</strong>, and confirm by tapping <strong className="text-[#a78bfa]">"Add"</strong>.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <button
                   onClick={() => setInstallGuideMode(null)}
