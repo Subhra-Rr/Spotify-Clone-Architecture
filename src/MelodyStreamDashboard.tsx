@@ -557,61 +557,36 @@ export default function MelodyStreamDashboard({
   }, []);
 
   const handleInstallClick = async () => {
-    if (isPrompting) return; // Prevent multiple sequential clicks from queueing
-    setIsPrompting(true);
+    const isInIframe = window.self !== window.top;
+    if (isInIframe) {
+      setInstallGuideMode("iframe");
+      return;
+    }
 
-    try {
-      const isInIframe = window.self !== window.top;
-      if (isInIframe) {
-        // PWA installation is blocked inside iframes by browsers. Redirect user to a new dedicated tab immediately.
-        window.open(window.location.origin + "?install=true", "_blank");
-        return;
+    const promptToUse = deferredPrompt || (window as any).deferredPrompt;
+    if (promptToUse) {
+      try {
+        promptToUse.prompt();
+        const { outcome } = await promptToUse.userChoice;
+        if (outcome === "accepted") {
+          setIsInstallable(false);
+          setDeferredPrompt(null);
+          (window as any).deferredPrompt = null;
+          showToast("MelodyStream installed successfully!", "success");
+        }
+      } catch (err) {
+        console.warn("Direct PWA install error:", err);
       }
-
+    } else {
       const userAgent = navigator.userAgent.toLowerCase();
       const isIOSDevice = /iphone|ipad|ipod/.test(userAgent) || 
         (navigator.maxTouchPoints && navigator.maxTouchPoints > 2 && /macintosh/i.test(navigator.userAgent));
-      const isAndroid = /android/i.test(userAgent);
-
-      // Look at React state AND check the global window property to get prompt availability instantly
-      const promptToUse = deferredPrompt || (window as any).deferredPrompt;
-
-      if (promptToUse) {
-        try {
-          // Directly trigger the native browser installation popup window immediately!
-          promptToUse.prompt();
-          const { outcome } = await promptToUse.userChoice;
-          if (outcome === "accepted") {
-            setIsInstallable(false);
-            setDeferredPrompt(null);
-            (window as any).deferredPrompt = null;
-            showToast("MelodyStream installed successfully!", "success");
-            setInstallGuideMode(null);
-          }
-        } catch (err) {
-          console.warn("Direct install prompt error:", err);
-          // Fallback to direct prompt modal if direct call failed
-          if (isIOSDevice) {
-            setInstallTab("ios");
-          } else if (isAndroid) {
-            setInstallTab("android");
-          } else {
-            setInstallTab("desktop");
-          }
-          setInstallGuideMode("guide");
-        }
+      
+      if (isIOSDevice) {
+        showToast("Tap Safari's Share button (⎋) then 'Add to Home Screen' to install natively.", "info");
       } else {
-        if (isIOSDevice) {
-          setInstallTab("ios");
-        } else if (isAndroid) {
-          setInstallTab("android");
-        } else {
-          setInstallTab("desktop");
-        }
-        setInstallGuideMode("guide");
+        showToast("Click the Install icon (🖥️ or ➕) in your browser address bar or menu to install natively.", "info");
       }
-    } finally {
-      setIsPrompting(false);
     }
   };
 
@@ -5371,7 +5346,7 @@ export default function MelodyStreamDashboard({
                   onClick={() => {
                     setInstallGuideMode(null);
                     window.open(
-                      window.location.href + "?install=true",
+                      window.location.origin + "?install=true",
                       "_blank",
                     );
                   }}

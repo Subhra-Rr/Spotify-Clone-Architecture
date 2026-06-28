@@ -266,28 +266,17 @@ function MainLayout() {
   return <MelodyStreamDashboard user={firebaseUser} onLogout={handleLogout} />;
 }
 
-function PWAInstallScreen() {
+interface PWAInstallScreenProps {
+  onClose: () => void;
+}
+
+function PWAInstallScreen({ onClose }: PWAInstallScreenProps) {
   const [isPrompting, setIsPrompting] = useState(false);
   const [isPromptReady, setIsPromptReady] = useState(false);
 
-  useEffect(() => {
-    // Check if prompt is already captured
-    if ((window as any).deferredPrompt) {
-      setIsPromptReady(true);
-    }
-
-    // Also register custom callback for readiness
-    (window as any).onBeforeInstallPromptReady = () => {
-      setIsPromptReady(true);
-    };
-
-    return () => {
-      (window as any).onBeforeInstallPromptReady = null;
-    };
-  }, []);
-
-  const triggerInstall = async () => {
-    if (isPrompting) return;
+  const triggerInstall = async (autoTrigger = false) => {
+    // Prevent multiple parallel prompt activations
+    if (!autoTrigger && isPrompting) return;
     setIsPrompting(true);
 
     try {
@@ -298,34 +287,11 @@ function PWAInstallScreen() {
         if (outcome === "accepted") {
           (window as any).deferredPrompt = null;
           setIsPromptReady(false);
-          // Redirect to the regular app URL (no query param)
-          window.location.href = window.location.origin;
+          onClose();
         }
       } else {
-        // Fallback or instructions
-        // Wait 1.5s to see if prompt fires, otherwise show instructions
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-        const finalPrompt = (window as any).deferredPrompt;
-        if (finalPrompt) {
-          finalPrompt.prompt();
-          const { outcome } = await finalPrompt.userChoice;
-          if (outcome === "accepted") {
-            (window as any).deferredPrompt = null;
-            setIsPromptReady(false);
-            window.location.href = window.location.origin;
-          }
-        } else {
-          // No prompt event. Show helpful modal instructions or alerts
-          const userAgent = navigator.userAgent.toLowerCase();
-          const isIOSDevice = /iphone|ipad|ipod/.test(userAgent) || 
-            (navigator.maxTouchPoints && navigator.maxTouchPoints > 2 && /macintosh/i.test(navigator.userAgent));
-          
-          if (isIOSDevice) {
-            alert("To install MelodyStream natively on your Apple device:\n1. Tap the Share button (⎋) in Safari.\n2. Select 'Add to Home Screen'.");
-          } else {
-            alert("To install MelodyStream natively:\nClick the Install icon (🖥️ or ➕) in your browser address bar, or open settings (⋮) and click 'Install MelodyStream'.");
-          }
-        }
+        // If they manually clicked the button but prompt is not ready, we let the UI guide them at the bottom.
+        // We strictly DO NOT display disruptive browser alert boxes anymore!
       }
     } catch (err) {
       console.warn("PWA install error:", err);
@@ -334,9 +300,27 @@ function PWAInstallScreen() {
     }
   };
 
+  useEffect(() => {
+    // If the browser already registered PWA readiness, auto-trigger the native installation popup immediately!
+    if ((window as any).deferredPrompt) {
+      setIsPromptReady(true);
+      triggerInstall(true);
+    }
+
+    // Capture dynamic readiness and auto-trigger immediately when it fires
+    (window as any).onBeforeInstallPromptReady = () => {
+      setIsPromptReady(true);
+      triggerInstall(true);
+    };
+
+    return () => {
+      (window as any).onBeforeInstallPromptReady = null;
+    };
+  }, []);
+
   const handleOpenWeb = () => {
-    // Redirect to the regular web player
-    window.location.href = window.location.origin;
+    // Close the install overlay instantly to display the player
+    onClose();
   };
 
   const isIOS = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase()) || 
@@ -375,7 +359,7 @@ function PWAInstallScreen() {
 
         <div className="pt-2 space-y-3">
           <button
-            onClick={triggerInstall}
+            onClick={() => triggerInstall(false)}
             disabled={isPrompting}
             className="w-full py-4 rounded-full bg-gradient-to-r from-[#8b5cf6] to-[#ec4899] text-white font-extrabold hover:scale-[1.02] active:scale-[0.98] transition-all text-sm shadow-[0_0_25px_rgba(139,92,246,0.4)] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75 disabled:scale-100"
           >
@@ -419,17 +403,44 @@ function PWAInstallScreen() {
 }
 
 export default function App() {
-  const [isInstallRedirect, setIsInstallRedirect] = useState(false);
+  // Synchronous URL query parameter check right in state initialization!
+  // This guarantees that if ?install=true is present, we completely bypass loading the heavy main player interface on initial render cycle.
+  const [isInstallRedirect, setIsInstallRedirect] = useState(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("install") === "true";
+    }
+    return false;
+  });
 
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search);
     if (queryParams.get("install") === "true") {
       setIsInstallRedirect(true);
     }
+
+    const handleShowInstall = () => {
+      setIsInstallRedirect(true);
+    };
+
+    window.addEventListener("show-pwa-install", handleShowInstall);
+    return () => {
+      window.removeEventListener("show-pwa-install", handleShowInstall);
+    };
   }, []);
 
   if (isInstallRedirect) {
-    return <PWAInstallScreen />;
+    return (
+      <PWAInstallScreen
+        onClose={() => {
+          setIsInstallRedirect(false);
+          if (typeof window !== "undefined" && window.history.pushState) {
+            const newUrl = window.location.origin + window.location.pathname;
+            window.history.pushState({ path: newUrl }, "", newUrl);
+          }
+        }}
+      />
+    );
   }
 
   return (
