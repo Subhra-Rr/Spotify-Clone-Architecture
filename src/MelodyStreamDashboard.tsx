@@ -406,6 +406,7 @@ export default function MelodyStreamDashboard({
   const [isStandalone, setIsStandalone] = useState(false);
   const [isPrompting, setIsPrompting] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [isWaitingForInstaller, setIsWaitingForInstaller] = useState(false);
   const [installGuideMode, setInstallGuideMode] = useState<
     "iframe" | "guide" | "direct-prompt" | null
   >(null);
@@ -463,6 +464,25 @@ export default function MelodyStreamDashboard({
       setDeferredPrompt(e);
       setIsInstallable(true);
 
+      // Fast-trigger direct prompt if user clicked Install App while the browser was still preparing it
+      if ((window as any).isAwaitingPrompt) {
+        (window as any).isAwaitingPrompt = false;
+        setIsWaitingForInstaller(false);
+        try {
+          e.prompt();
+          e.userChoice.then((choiceResult: any) => {
+            if (choiceResult.outcome === "accepted") {
+              setIsInstallable(false);
+              setDeferredPrompt(null);
+              (window as any).deferredPrompt = null;
+              showToast("MelodyStream installed successfully!", "success");
+            }
+          });
+        } catch (err) {
+          console.warn("Fast-trigger PWA prompt error:", err);
+        }
+      }
+
       // If we are auto-installing from a new tab redirection, trigger the native browser prompt instantly!
       const queryParams = new URLSearchParams(window.location.search);
       if (queryParams.get("install") === "true") {
@@ -516,6 +536,24 @@ export default function MelodyStreamDashboard({
     (window as any).onBeforeInstallPromptReady = (e: any) => {
       setDeferredPrompt(e);
       setIsInstallable(true);
+
+      if ((window as any).isAwaitingPrompt) {
+        (window as any).isAwaitingPrompt = false;
+        setIsWaitingForInstaller(false);
+        try {
+          e.prompt();
+          e.userChoice.then((choiceResult: any) => {
+            if (choiceResult.outcome === "accepted") {
+              setIsInstallable(false);
+              setDeferredPrompt(null);
+              (window as any).deferredPrompt = null;
+              showToast("MelodyStream installed successfully!", "success");
+            }
+          });
+        } catch (err) {
+          console.warn("Global callback fast-trigger error:", err);
+        }
+      }
     };
 
     // 4. Listen for installation completion
@@ -578,15 +616,36 @@ export default function MelodyStreamDashboard({
         console.warn("Direct PWA install error:", err);
       }
     } else {
-      const userAgent = navigator.userAgent.toLowerCase();
-      const isIOSDevice = /iphone|ipad|ipod/.test(userAgent) || 
-        (navigator.maxTouchPoints && navigator.maxTouchPoints > 2 && /macintosh/i.test(navigator.userAgent));
-      
-      if (isIOSDevice) {
-        showToast("Tap Safari's Share button (⎋) then 'Add to Home Screen' to install natively.", "info");
-      } else {
-        showToast("Click the Install icon (🖥️ or ➕) in your browser address bar or menu to install natively.", "info");
-      }
+      setIsWaitingForInstaller(true);
+      (window as any).isAwaitingPrompt = true;
+      showToast("Connecting to secure native installer... Please wait.", "info");
+
+      setTimeout(() => {
+        setIsWaitingForInstaller((prev) => {
+          if (prev) {
+            const userAgent = navigator.userAgent.toLowerCase();
+            const isIOSDevice =
+              /iphone|ipad|ipod/.test(userAgent) ||
+              (navigator.maxTouchPoints &&
+                navigator.maxTouchPoints > 2 &&
+                /macintosh/i.test(navigator.userAgent));
+
+            if (isIOSDevice) {
+              showToast(
+                "Tap Safari's Share button (⎋) then 'Add to Home Screen' to install.",
+                "info",
+              );
+            } else {
+              showToast(
+                "Click the Install icon (🖥️ or ➕) in your browser address bar to install.",
+                "info",
+              );
+            }
+          }
+          return false;
+        });
+        (window as any).isAwaitingPrompt = false;
+      }, 5000);
     }
   };
 
@@ -2293,13 +2352,22 @@ export default function MelodyStreamDashboard({
             >
               {!isStandalone && (
                 <button
+                  disabled={isWaitingForInstaller}
                   onClick={handleInstallClick}
-                  className="flex items-center gap-1.5 bg-[#8b5cf6] text-white hover:bg-[#7c3aed] text-xs sm:text-sm font-bold px-3 sm:px-4 py-[6px] rounded-full hover:scale-105 active:scale-95 transition-transform mr-1 border border-violet-400/20 shadow-[0_0_12px_rgba(139,92,246,0.3)] shrink-0 animate-fade-in"
+                  className="flex items-center gap-1.5 bg-[#8b5cf6] text-white hover:bg-[#7c3aed] text-xs sm:text-sm font-bold px-3 sm:px-4 py-[6px] rounded-full hover:scale-105 active:scale-95 transition-transform mr-1 border border-violet-400/20 shadow-[0_0_12px_rgba(139,92,246,0.3)] shrink-0 animate-fade-in disabled:opacity-75 disabled:cursor-wait"
                   title="Install MelodyStream on your device"
                 >
-                  <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-bounce" />
-                  <span className="hidden sm:inline">Install App</span>
-                  <span className="sm:hidden">Install</span>
+                  {isWaitingForInstaller ? (
+                    <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin text-white" />
+                  ) : (
+                    <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-bounce" />
+                  )}
+                  <span className="hidden sm:inline">
+                    {isWaitingForInstaller ? "Preparing..." : "Install App"}
+                  </span>
+                  <span className="sm:hidden">
+                    {isWaitingForInstaller ? "Preparing..." : "Install"}
+                  </span>
                 </button>
               )}
               {!isPremium && (

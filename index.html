@@ -16,9 +16,20 @@
     <script>
       // Capture PWA installation prompt globally before React loads
       window.deferredPrompt = null;
+      window.isAwaitingPrompt = false;
       window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         window.deferredPrompt = e;
+        
+        if (window.isAwaitingPrompt) {
+          window.isAwaitingPrompt = false;
+          try {
+            e.prompt();
+          } catch (err) {
+            console.warn('Global fast-trigger PWA prompt error:', err);
+          }
+        }
+
         if (window.onBeforeInstallPromptReady) {
           window.onBeforeInstallPromptReady(e);
         }
