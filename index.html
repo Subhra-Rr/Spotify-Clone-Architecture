@@ -24,13 +24,16 @@
         }
       });
 
-      // Register PWA service worker
+      // Register PWA service worker immediately to speed up install prompt detection
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(reg => console.log('MelodyStream PWA Service Worker registered:', reg.scope))
-            .catch(err => console.warn('MelodyStream PWA Service Worker registration failed:', err));
-        });
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => {
+            console.log('MelodyStream PWA Service Worker registered:', reg.scope);
+            try {
+              reg.update(); // Trigger check for updates to speed up browser caching evaluation
+            } catch (e) {}
+          })
+          .catch(err => console.warn('MelodyStream PWA Service Worker registration failed:', err));
       }
 
       // Complete isolation of WebSocket or HMR connectivity failures

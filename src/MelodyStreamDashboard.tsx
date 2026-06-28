@@ -404,6 +404,7 @@ export default function MelodyStreamDashboard({
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [isPrompting, setIsPrompting] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [installGuideMode, setInstallGuideMode] = useState<
     "iframe" | "guide" | "direct-prompt" | null
@@ -556,31 +557,50 @@ export default function MelodyStreamDashboard({
   }, []);
 
   const handleInstallClick = async () => {
-    const isInIframe = window.self !== window.top;
-    if (isInIframe) {
-      // PWA installation is blocked inside iframes by browsers. Redirect user to a new dedicated tab immediately.
-      window.open(window.location.origin + "?install=true", "_blank");
-      return;
-    }
+    if (isPrompting) return; // Prevent multiple sequential clicks from queueing
+    setIsPrompting(true);
 
-    const userAgent = navigator.userAgent.toLowerCase();
-    const isIOSDevice = /iphone|ipad|ipod/.test(userAgent) || 
-      (navigator.maxTouchPoints && navigator.maxTouchPoints > 2 && /macintosh/i.test(navigator.userAgent));
-    const isAndroid = /android/i.test(userAgent);
+    try {
+      const isInIframe = window.self !== window.top;
+      if (isInIframe) {
+        // PWA installation is blocked inside iframes by browsers. Redirect user to a new dedicated tab immediately.
+        window.open(window.location.origin + "?install=true", "_blank");
+        return;
+      }
 
-    if (deferredPrompt) {
-      try {
-        // Directly trigger the native browser installation popup window immediately!
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === "accepted") {
-          setIsInstallable(false);
-          setDeferredPrompt(null);
-          showToast("MelodyStream installed successfully!", "success");
+      const userAgent = navigator.userAgent.toLowerCase();
+      const isIOSDevice = /iphone|ipad|ipod/.test(userAgent) || 
+        (navigator.maxTouchPoints && navigator.maxTouchPoints > 2 && /macintosh/i.test(navigator.userAgent));
+      const isAndroid = /android/i.test(userAgent);
+
+      // Look at React state AND check the global window property to get prompt availability instantly
+      const promptToUse = deferredPrompt || (window as any).deferredPrompt;
+
+      if (promptToUse) {
+        try {
+          // Directly trigger the native browser installation popup window immediately!
+          promptToUse.prompt();
+          const { outcome } = await promptToUse.userChoice;
+          if (outcome === "accepted") {
+            setIsInstallable(false);
+            setDeferredPrompt(null);
+            (window as any).deferredPrompt = null;
+            showToast("MelodyStream installed successfully!", "success");
+            setInstallGuideMode(null);
+          }
+        } catch (err) {
+          console.warn("Direct install prompt error:", err);
+          // Fallback to direct prompt modal if direct call failed
+          if (isIOSDevice) {
+            setInstallTab("ios");
+          } else if (isAndroid) {
+            setInstallTab("android");
+          } else {
+            setInstallTab("desktop");
+          }
+          setInstallGuideMode("guide");
         }
-      } catch (err) {
-        console.warn("Direct install prompt error:", err);
-        // Fallback to direct prompt modal if direct call failed
+      } else {
         if (isIOSDevice) {
           setInstallTab("ios");
         } else if (isAndroid) {
@@ -590,15 +610,8 @@ export default function MelodyStreamDashboard({
         }
         setInstallGuideMode("guide");
       }
-    } else {
-      if (isIOSDevice) {
-        setInstallTab("ios");
-      } else if (isAndroid) {
-        setInstallTab("android");
-      } else {
-        setInstallTab("desktop");
-      }
-      setInstallGuideMode("guide");
+    } finally {
+      setIsPrompting(false);
     }
   };
 
@@ -5397,13 +5410,17 @@ export default function MelodyStreamDashboard({
                 </div>
 
                 {/* If PWA installer is captured and ready, show the single big install button! */}
-                {deferredPrompt ? (
+                {(deferredPrompt || (window as any).deferredPrompt) ? (
                   <button
+                    disabled={isPrompting}
                     onClick={async () => {
+                      if (isPrompting) return;
+                      setIsPrompting(true);
                       try {
-                        if (deferredPrompt) {
-                          deferredPrompt.prompt();
-                          const { outcome } = await deferredPrompt.userChoice;
+                        const promptToUse = deferredPrompt || (window as any).deferredPrompt;
+                        if (promptToUse) {
+                          promptToUse.prompt();
+                          const { outcome } = await promptToUse.userChoice;
                           if (outcome === "accepted") {
                             setIsInstallable(false);
                             setDeferredPrompt(null);
@@ -5417,12 +5434,23 @@ export default function MelodyStreamDashboard({
                         }
                       } catch (err) {
                         console.warn("PWA prompt error:", err);
+                      } finally {
+                        setIsPrompting(false);
                       }
                     }}
-                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#8b5cf6] to-[#ec4899] text-white font-extrabold hover:scale-[1.01] active:scale-[0.99] transition-all text-[15px] shadow-[0_0_25px_rgba(139,92,246,0.4)] flex items-center justify-center gap-2"
+                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#8b5cf6] to-[#ec4899] text-white font-extrabold hover:scale-[1.01] active:scale-[0.99] transition-all text-[15px] shadow-[0_0_25px_rgba(139,92,246,0.4)] flex items-center justify-center gap-2 disabled:opacity-75 disabled:scale-100 disabled:cursor-not-allowed"
                   >
-                    <Download className="w-5 h-5 animate-bounce" />
-                    Install Standalone App Now
+                    {isPrompting ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin text-white" />
+                        Prompting Device...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-5 h-5 animate-bounce" />
+                        Install Standalone App Now
+                      </>
+                    )}
                   </button>
                 ) : installTab === "ios" ? (
                   /* Clean, simple instructions for iOS/iPad */
