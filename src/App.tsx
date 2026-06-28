@@ -273,14 +273,38 @@ interface PWAInstallScreenProps {
 function PWAInstallScreen({ onClose }: PWAInstallScreenProps) {
   const [isPrompting, setIsPrompting] = useState(false);
   const [isPromptReady, setIsPromptReady] = useState(false);
+  const [installMessage, setInstallMessage] = useState<string | null>(null);
 
   const triggerInstall = async (autoTrigger = false) => {
     // Prevent multiple parallel prompt activations
     if (!autoTrigger && isPrompting) return;
     setIsPrompting(true);
+    setInstallMessage(null);
 
     try {
-      const promptToUse = (window as any).deferredPrompt;
+      let promptToUse = (window as any).deferredPrompt;
+
+      if (!promptToUse && !autoTrigger) {
+        // Poll for a very short duration (800ms) to capture the prompt instantly if it loads, keeping it within user gesture window!
+        const pollInterval = 40;
+        const maxPollTime = 800;
+        let timeElapsed = 0;
+
+        promptToUse = await new Promise((resolve) => {
+          const intervalId = setInterval(() => {
+            const currentPrompt = (window as any).deferredPrompt;
+            timeElapsed += pollInterval;
+            if (currentPrompt) {
+              clearInterval(intervalId);
+              resolve(currentPrompt);
+            } else if (timeElapsed >= maxPollTime) {
+              clearInterval(intervalId);
+              resolve(null);
+            }
+          }, pollInterval);
+        });
+      }
+
       if (promptToUse) {
         promptToUse.prompt();
         const { outcome } = await promptToUse.userChoice;
@@ -290,8 +314,13 @@ function PWAInstallScreen({ onClose }: PWAInstallScreenProps) {
           onClose();
         }
       } else {
-        // If they manually clicked the button but prompt is not ready, we let the UI guide them at the bottom.
-        // We strictly DO NOT display disruptive browser alert boxes anymore!
+        if (!autoTrigger) {
+          if (isIOS) {
+            setInstallMessage("Apple iOS Device: Tap Safari's 'Share' button (⎋) at the bottom, then scroll down and choose 'Add to Home Screen' to install natively.");
+          } else {
+            setInstallMessage("Please tap the 'Install' icon in your browser address bar, or open settings (⋮) and select 'Install MelodyStream' to download natively.");
+          }
+        }
       }
     } catch (err) {
       console.warn("PWA install error:", err);
@@ -356,6 +385,12 @@ function PWAInstallScreen({ onClose }: PWAInstallScreenProps) {
         <p className="text-gray-300 text-[13px] leading-relaxed max-w-xs mx-auto">
           Installs directly onto your device for listening to music everywhere. Enjoy high-speed offline local caching, seamless lock screen integration, background playback, and full device media controls.
         </p>
+
+        {installMessage && (
+          <div className="bg-[#8b5cf6]/10 border border-[#8b5cf6]/20 text-[#a78bfa] text-xs py-2.5 px-3 rounded-xl animate-fade-in text-center leading-relaxed">
+            {installMessage}
+          </div>
+        )}
 
         <div className="pt-2 space-y-3">
           <button

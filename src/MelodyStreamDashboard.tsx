@@ -601,7 +601,36 @@ export default function MelodyStreamDashboard({
       return;
     }
 
-    const promptToUse = deferredPrompt || (window as any).deferredPrompt;
+    let promptToUse = deferredPrompt || (window as any).deferredPrompt;
+
+    if (!promptToUse) {
+      // Poll at high speed (every 40ms) up to 800ms inside user gesture window to trigger natively as fast as humanly possible!
+      setIsWaitingForInstaller(true);
+      (window as any).isAwaitingPrompt = true;
+
+      const pollInterval = 40;
+      const maxPollTime = 800;
+      let timeElapsed = 0;
+
+      promptToUse = await new Promise((resolve) => {
+        const intervalId = setInterval(() => {
+          const currentPrompt = deferredPrompt || (window as any).deferredPrompt;
+          timeElapsed += pollInterval;
+
+          if (currentPrompt) {
+            clearInterval(intervalId);
+            resolve(currentPrompt);
+          } else if (timeElapsed >= maxPollTime) {
+            clearInterval(intervalId);
+            resolve(null);
+          }
+        }, pollInterval);
+      });
+
+      setIsWaitingForInstaller(false);
+      (window as any).isAwaitingPrompt = false;
+    }
+
     if (promptToUse) {
       try {
         promptToUse.prompt();
@@ -616,36 +645,25 @@ export default function MelodyStreamDashboard({
         console.warn("Direct PWA install error:", err);
       }
     } else {
-      setIsWaitingForInstaller(true);
-      (window as any).isAwaitingPrompt = true;
-      showToast("Connecting to secure native installer... Please wait.", "info");
+      // Instantly provide fallback platform-specific guidance with NO 5-second delay!
+      const userAgent = navigator.userAgent.toLowerCase();
+      const isIOSDevice =
+        /iphone|ipad|ipod/.test(userAgent) ||
+        (navigator.maxTouchPoints &&
+          navigator.maxTouchPoints > 2 &&
+          /macintosh/i.test(navigator.userAgent));
 
-      setTimeout(() => {
-        setIsWaitingForInstaller((prev) => {
-          if (prev) {
-            const userAgent = navigator.userAgent.toLowerCase();
-            const isIOSDevice =
-              /iphone|ipad|ipod/.test(userAgent) ||
-              (navigator.maxTouchPoints &&
-                navigator.maxTouchPoints > 2 &&
-                /macintosh/i.test(navigator.userAgent));
-
-            if (isIOSDevice) {
-              showToast(
-                "Tap Safari's Share button (⎋) then 'Add to Home Screen' to install.",
-                "info",
-              );
-            } else {
-              showToast(
-                "Click the Install icon (🖥️ or ➕) in your browser address bar to install.",
-                "info",
-              );
-            }
-          }
-          return false;
-        });
-        (window as any).isAwaitingPrompt = false;
-      }, 5000);
+      if (isIOSDevice) {
+        showToast(
+          "Tap Safari's Share button (⎋) then 'Add to Home Screen' to install natively.",
+          "info",
+        );
+      } else {
+        showToast(
+          "Tap settings (⋮) and select 'Install MelodyStream' or 'Add to Home Screen' to download natively.",
+          "info",
+        );
+      }
     }
   };
 
