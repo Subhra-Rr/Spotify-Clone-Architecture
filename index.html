@@ -29,6 +29,20 @@
         navigator.serviceWorker.register('/sw.js')
           .then(reg => {
             console.log('MelodyStream PWA Service Worker registered:', reg.scope);
+            
+            // Listen for service worker updates and reload page automatically once the new one is active
+            reg.addEventListener('updatefound', () => {
+              const installingWorker = reg.installing;
+              if (installingWorker) {
+                installingWorker.addEventListener('statechange', () => {
+                  if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    console.log('New app version detected. Reloading to apply updates...');
+                    window.location.reload();
+                  }
+                });
+              }
+            });
+
             try {
               reg.update(); // Trigger check for updates to speed up browser caching evaluation
             } catch (e) {}

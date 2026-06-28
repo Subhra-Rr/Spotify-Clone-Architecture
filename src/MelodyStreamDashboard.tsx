@@ -5399,8 +5399,8 @@ export default function MelodyStreamDashboard({
                     <h4 className="text-lg font-bold text-white">
                       MelodyStream Music
                     </h4>
-                    <p className="text-xs text-[#b3b3b3] mt-1">
-                      {installTab === "ios" ? "Apple iOS Standalone App" : installTab === "android" ? "Android Standalone App" : "Desktop Standalone App"}
+                    <p className="text-xs text-[#a78bfa] font-bold mt-1 tracking-wide uppercase">
+                      Standalone Application
                     </p>
                   </div>
 
@@ -5409,8 +5409,8 @@ export default function MelodyStreamDashboard({
                   </p>
                 </div>
 
-                {/* If PWA installer is captured and ready, show the single big install button! */}
-                {(deferredPrompt || (window as any).deferredPrompt) ? (
+                {/* Always show the single big install button to trigger native-grade app installation! */}
+                <div className="space-y-4 max-w-sm mx-auto">
                   <button
                     disabled={isPrompting}
                     onClick={async () => {
@@ -5431,6 +5431,17 @@ export default function MelodyStreamDashboard({
                               "success",
                             );
                           }
+                        } else {
+                          // Fallback direct notice if the browser prompt event has not loaded or has been dismissed
+                          const userAgent = navigator.userAgent.toLowerCase();
+                          const isIOSDevice = /iphone|ipad|ipod/.test(userAgent) || 
+                            (navigator.maxTouchPoints && navigator.maxTouchPoints > 2 && /macintosh/i.test(navigator.userAgent));
+                          
+                          if (isIOSDevice) {
+                            showToast("Please use browser 'Share' -> 'Add to Home Screen' to install natively.", "info");
+                          } else {
+                            showToast("Please tap the 'Install' icon in your browser address bar or menu to install natively.", "info");
+                          }
                         }
                       } catch (err) {
                         console.warn("PWA prompt error:", err);
@@ -5438,7 +5449,7 @@ export default function MelodyStreamDashboard({
                         setIsPrompting(false);
                       }
                     }}
-                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#8b5cf6] to-[#ec4899] text-white font-extrabold hover:scale-[1.01] active:scale-[0.99] transition-all text-[15px] shadow-[0_0_25px_rgba(139,92,246,0.4)] flex items-center justify-center gap-2 disabled:opacity-75 disabled:scale-100 disabled:cursor-not-allowed"
+                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#8b5cf6] to-[#ec4899] text-white font-extrabold hover:scale-[1.01] active:scale-[0.99] transition-all text-[15px] shadow-[0_0_25px_rgba(139,92,246,0.4)] flex items-center justify-center gap-2 disabled:opacity-75 disabled:scale-100"
                   >
                     {isPrompting ? (
                       <>
@@ -5452,91 +5463,26 @@ export default function MelodyStreamDashboard({
                       </>
                     )}
                   </button>
-                ) : installTab === "ios" ? (
-                  /* Clean, simple instructions for iOS/iPad */
-                  <div className="space-y-3.5 text-left text-xs bg-[#242424] p-4 rounded-xl border border-white/5 max-w-sm mx-auto">
-                    <p className="font-semibold text-white mb-2 text-center text-sm">
-                      How to Install on iPhone / iPad:
-                    </p>
-                    <div className="flex gap-2.5 items-start">
-                      <div className="w-5 h-5 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
-                        1
-                      </div>
-                      <p className="text-[#b3b3b3]">
-                        Tap the browser <strong className="text-white">Share</strong> button <span className="bg-[#3e3e3e] px-1.5 py-0.5 rounded text-white text-[11px] font-mono">⎋</span> at the bottom of Safari.
-                      </p>
-                    </div>
-                    <div className="flex gap-2.5 items-start">
-                      <div className="w-5 h-5 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
-                        2
-                      </div>
-                      <p className="text-[#b3b3b3]">
-                        Scroll down the pop-up list and select <strong className="text-white">"Add to Home Screen"</strong>.
-                      </p>
-                    </div>
-                    <div className="flex gap-2.5 items-start">
-                      <div className="w-5 h-5 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
-                        3
-                      </div>
-                      <p className="text-[#b3b3b3]">
-                        Confirm by tapping <strong className="text-[#a78bfa]">"Add"</strong> in the top right.
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  /* Fallback manual guide if deferredPrompt is not ready yet for Android or Desktop */
-                  <div className="space-y-4 max-w-sm mx-auto">
-                    <div className="flex items-center justify-center gap-2 text-xs text-[#b3b3b3] bg-[#242424] py-3 px-4 rounded-xl border border-white/5 shadow-inner">
-                      <Loader2 className="w-4 h-4 animate-spin text-[#8b5cf6]" />
-                      <span>Readying browser installation window...</span>
-                    </div>
 
-                    <div className="text-left text-xs bg-[#242424] p-4 rounded-xl border border-white/5 space-y-2.5">
-                      <p className="font-semibold text-white mb-1.5 text-center text-sm">
-                        Or Install Manually:
+                  {/* Browser native trigger guide only if deferredPrompt is not ready yet */}
+                  {!(deferredPrompt || (window as any).deferredPrompt) && (
+                    <div className="text-left text-xs bg-[#242424] p-4 rounded-xl border border-white/5 space-y-2 text-gray-300 animate-fade-in">
+                      <p className="font-bold text-[#a78bfa] text-center text-xs tracking-wider uppercase mb-1">
+                        How to Install:
                       </p>
-                      {installTab === "android" ? (
-                        <>
-                          <div className="flex gap-2.5 items-start">
-                            <div className="w-5 h-5 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
-                              1
-                            </div>
-                            <p className="text-[#b3b3b3]">
-                              Tap browser menu (three dots <strong className="text-white">⋮</strong>) at the top-right of your screen.
-                            </p>
-                          </div>
-                          <div className="flex gap-2.5 items-start">
-                            <div className="w-5 h-5 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
-                              2
-                            </div>
-                            <p className="text-[#b3b3b3]">
-                              Select <strong className="text-white">"Install app"</strong> or <strong className="text-white">"Add to Home screen"</strong>.
-                            </p>
-                          </div>
-                        </>
+                      {/iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase()) || 
+                      (navigator.maxTouchPoints && navigator.maxTouchPoints > 2 && /macintosh/i.test(navigator.userAgent)) ? (
+                        <p className="text-[#b3b3b3] leading-relaxed text-center text-[11px]">
+                          Tap browser <strong className="text-white">Share</strong> button <span className="bg-[#3e3e3e] px-1 py-0.5 rounded text-white text-[11px] font-mono">⎋</span> at the bottom of Safari, and select <strong className="text-white">"Add to Home Screen"</strong>.
+                        </p>
                       ) : (
-                        <>
-                          <div className="flex gap-2.5 items-start">
-                            <div className="w-5 h-5 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
-                              1
-                            </div>
-                            <p className="text-[#b3b3b3]">
-                              Click the <strong className="text-white">Install Icon</strong> (computer monitor with a down arrow) in your browser address bar.
-                            </p>
-                          </div>
-                          <div className="flex gap-2.5 items-start">
-                            <div className="w-5 h-5 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
-                              2
-                            </div>
-                            <p className="text-[#b3b3b3]">
-                              Or open settings (three dots <strong className="text-white">⋮</strong>) and select <strong className="text-[#a78bfa]">"Install MelodyStream..."</strong> or <strong className="text-[#a78bfa]">"Install page as app"</strong>.
-                            </p>
-                          </div>
-                        </>
+                        <p className="text-[#b3b3b3] leading-relaxed text-center text-[11px]">
+                          Click the <strong className="text-white">Install Icon</strong> (🖥️ or ➕) next to the URL, or click settings <strong className="text-white">(⋮)</strong> and select <strong className="text-[#a78bfa]">"Install MelodyStream"</strong>.
+                        </p>
                       )}
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 <button
                   onClick={() => setInstallGuideMode(null)}
