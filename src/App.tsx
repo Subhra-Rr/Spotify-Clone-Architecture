@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { AuthProvider, useAuth } from "./MelodyStreamAuthContext";
 import MelodyStreamDashboard from "./MelodyStreamDashboard";
-import { Music } from "lucide-react";
+import { Music, Download, BadgeCheck, ExternalLink, Loader2 } from "lucide-react";
 import { auth, googleProvider } from "./firebase";
 import {
   signInWithPopup,
@@ -266,7 +266,172 @@ function MainLayout() {
   return <MelodyStreamDashboard user={firebaseUser} onLogout={handleLogout} />;
 }
 
+function PWAInstallScreen() {
+  const [isPrompting, setIsPrompting] = useState(false);
+  const [isPromptReady, setIsPromptReady] = useState(false);
+
+  useEffect(() => {
+    // Check if prompt is already captured
+    if ((window as any).deferredPrompt) {
+      setIsPromptReady(true);
+    }
+
+    // Also register custom callback for readiness
+    (window as any).onBeforeInstallPromptReady = () => {
+      setIsPromptReady(true);
+    };
+
+    return () => {
+      (window as any).onBeforeInstallPromptReady = null;
+    };
+  }, []);
+
+  const triggerInstall = async () => {
+    if (isPrompting) return;
+    setIsPrompting(true);
+
+    try {
+      const promptToUse = (window as any).deferredPrompt;
+      if (promptToUse) {
+        promptToUse.prompt();
+        const { outcome } = await promptToUse.userChoice;
+        if (outcome === "accepted") {
+          (window as any).deferredPrompt = null;
+          setIsPromptReady(false);
+          // Redirect to the regular app URL (no query param)
+          window.location.href = window.location.origin;
+        }
+      } else {
+        // Fallback or instructions
+        // Wait 1.5s to see if prompt fires, otherwise show instructions
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        const finalPrompt = (window as any).deferredPrompt;
+        if (finalPrompt) {
+          finalPrompt.prompt();
+          const { outcome } = await finalPrompt.userChoice;
+          if (outcome === "accepted") {
+            (window as any).deferredPrompt = null;
+            setIsPromptReady(false);
+            window.location.href = window.location.origin;
+          }
+        } else {
+          // No prompt event. Show helpful modal instructions or alerts
+          const userAgent = navigator.userAgent.toLowerCase();
+          const isIOSDevice = /iphone|ipad|ipod/.test(userAgent) || 
+            (navigator.maxTouchPoints && navigator.maxTouchPoints > 2 && /macintosh/i.test(navigator.userAgent));
+          
+          if (isIOSDevice) {
+            alert("To install MelodyStream natively on your Apple device:\n1. Tap the Share button (⎋) in Safari.\n2. Select 'Add to Home Screen'.");
+          } else {
+            alert("To install MelodyStream natively:\nClick the Install icon (🖥️ or ➕) in your browser address bar, or open settings (⋮) and click 'Install MelodyStream'.");
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("PWA install error:", err);
+    } finally {
+      setIsPrompting(false);
+    }
+  };
+
+  const handleOpenWeb = () => {
+    // Redirect to the regular web player
+    window.location.href = window.location.origin;
+  };
+
+  const isIOS = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase()) || 
+    (navigator.maxTouchPoints && navigator.maxTouchPoints > 2 && /macintosh/i.test(navigator.userAgent));
+
+  return (
+    <div className="flex flex-col min-h-screen bg-black items-center justify-center font-sans py-12 px-4 select-none">
+      <div className="bg-[#121212] p-8 sm:p-12 rounded-2xl w-full max-w-md shadow-2xl text-center border border-[#282828] space-y-6 relative overflow-hidden">
+        {/* Subtle glowing ambient backdrop */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 bg-violet-600/10 rounded-full blur-[60px] pointer-events-none" />
+
+        <div className="relative w-24 h-24 mx-auto mb-2">
+          <img
+            src="/icon.svg"
+            alt="MelodyStream Logo"
+            className="w-full h-full rounded-2xl shadow-[0_15px_40px_rgba(139,92,246,0.3)] border border-white/10"
+            referrerPolicy="no-referrer"
+          />
+          <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-1 rounded-full border-2 border-[#121212] flex items-center justify-center shadow-lg">
+            <BadgeCheck className="w-4 h-4 text-white fill-white/10" />
+          </div>
+        </div>
+
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight font-sans">
+            Install MelodyStream
+          </h1>
+          <p className="text-[#a78bfa] text-xs font-bold uppercase tracking-wider mt-1.5">
+            Native-Grade Standalone Application
+          </p>
+        </div>
+
+        <p className="text-gray-300 text-[13px] leading-relaxed max-w-xs mx-auto">
+          Installs directly onto your device for listening to music everywhere. Enjoy high-speed offline local caching, seamless lock screen integration, background playback, and full device media controls.
+        </p>
+
+        <div className="pt-2 space-y-3">
+          <button
+            onClick={triggerInstall}
+            disabled={isPrompting}
+            className="w-full py-4 rounded-full bg-gradient-to-r from-[#8b5cf6] to-[#ec4899] text-white font-extrabold hover:scale-[1.02] active:scale-[0.98] transition-all text-sm shadow-[0_0_25px_rgba(139,92,246,0.4)] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75 disabled:scale-100"
+          >
+            {isPrompting ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin text-white" />
+                Prompting Device Installer...
+              </>
+            ) : (
+              <>
+                <Download className="w-5 h-5 animate-bounce" />
+                Install Native App Now
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={handleOpenWeb}
+            className="w-full bg-transparent border border-[#282828] hover:border-[#3e3e3e] text-white/80 hover:text-white font-semibold text-xs rounded-full py-3 hover:bg-[#1a1a1a] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            Continue to Web Player
+          </button>
+        </div>
+
+        {/* Dynamic Helpful Indicator */}
+        <div className="pt-4 border-t border-white/5 text-[11px] text-[#808080] leading-relaxed">
+          {isIOS ? (
+            <p className="text-[#b3b3b3]">
+              Apple iOS Device detected: Tap Safari's <strong className="text-white">Share ⎋</strong> then <strong className="text-white">"Add to Home Screen"</strong> if the install window does not launch automatically.
+            </p>
+          ) : (
+            <p className="text-[#b3b3b3]">
+              Compatible with Android, Windows, Mac, iPad, and Chromebook. Click the install prompt or use your browser settings <strong className="text-white">(⋮)</strong> -&gt; <strong className="text-[#a78bfa]">"Install MelodyStream"</strong>.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
+  const [isInstallRedirect, setIsInstallRedirect] = useState(false);
+
+  useEffect(() => {
+    const queryParams = new URLSearchParams(window.location.search);
+    if (queryParams.get("install") === "true") {
+      setIsInstallRedirect(true);
+    }
+  }, []);
+
+  if (isInstallRedirect) {
+    return <PWAInstallScreen />;
+  }
+
   return (
     <AuthProvider>
       <MainLayout />

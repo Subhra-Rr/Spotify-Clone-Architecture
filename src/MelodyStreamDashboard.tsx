@@ -5325,7 +5325,7 @@ export default function MelodyStreamDashboard({
               <p className="text-[#b3b3b3] text-xs mt-1">
                 {installGuideMode === "iframe"
                   ? "Open app in a dedicated tab to install natively"
-                  : "Get the native app on your desktop or laptop"}
+                  : "Get the native music app on your device for listening everywhere"}
               </p>
             </div>
 
