@@ -122,7 +122,11 @@ app.get("/api/stream/:videoId", async (req, res) => {
       // Helper to clean up titles from typical YouTube promotional noise
       const cleanRegex = /\((official|video|audio|lyric|lyrics|ft\.|feat\.|with|hd|hq|4k|remix|version|live|clip|full|exclusive|cover|karaoke|mp3|extended|edit)[^)]*\)|\[(official|video|audio|lyric|lyrics|ft\.|feat\.|with|hd|hq|4k|remix|version|live|clip|full|exclusive|cover|karaoke|mp3|extended|edit)[^\]]*\]/gi;
       let cleanTitle = title.replace(cleanRegex, '');
-      cleanTitle = cleanTitle.replace(/(feat\.|ft\.|featuring|with|lyrics|official video|official audio|official music video).*$/gi, '');
+      cleanTitle = cleanTitle.replace(/(feat\.|ft\.|featuring|with|lyrics|official video|official audio|official music video|from the movie|from the album|from the ost|from ".*"|from '.*').*$/gi, '');
+      cleanTitle = cleanTitle.replace(/\s*\(From "[^"]*"\)/gi, '');
+      cleanTitle = cleanTitle.replace(/\s*\(From '[^']*'\)/gi, '');
+      cleanTitle = cleanTitle.replace(/\s*\(From [^)]*\)/gi, '');
+      cleanTitle = cleanTitle.replace(/\s*\[From [^\]]*\]/gi, '');
       
       // Preserve Unicode letters, numbers, spaces, and standard characters
       cleanTitle = cleanTitle.replace(/[^\p{L}\p{N}\s'&]/gu, ' ').replace(/\s+/g, ' ').trim();
@@ -213,12 +217,30 @@ app.get("/api/stream/:videoId", async (req, res) => {
 
 // Provide Preview Data API
 app.get("/api/tracks", async (req, res) => {
-  // Primary fetch: iTunes Search API (highly optimized, reliable, 100% status 200, high-speed CDN previews)
+  // Primary fetch: iTunes Search API for multiple popular genres (highly optimized, multi-genre variety)
   try {
-    const response = await fetch("https://itunes.apple.com/search?term=pop&entity=song&limit=35");
-    const data: any = await response.json();
-    if (data && data.results && data.results.length > 0) {
-      const results = data.results.map((song: any, i: number) => {
+    const genres = ["bollywood", "punjabi", "pop", "lofi", "rock", "hip hop", "romance"];
+    const promises = genres.map(async (genre) => {
+      try {
+        const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(genre)}&entity=song&limit=15`);
+        const data: any = await response.json();
+        if (data && data.results) {
+          return data.results.filter((s: any) => s.previewUrl);
+        }
+      } catch (e) {
+        // ignore single genre fetch errors
+      }
+      return [];
+    });
+
+    const resultsArray = await Promise.all(promises);
+    const allSongs = resultsArray.flat();
+
+    if (allSongs.length > 0) {
+      // Shuffle the songs to mix genres beautifully on load
+      const shuffled = allSongs.sort(() => Math.random() - 0.5);
+      
+      const formatted = shuffled.map((song: any, i: number) => {
         const durMatch = song.trackTimeMillis;
         let durStr = "03:30";
         if (durMatch && typeof durMatch === 'number') {
@@ -227,19 +249,28 @@ app.get("/api/tracks", async (req, res) => {
           durStr = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
         }
         return {
-          id: `track-${i + 1}`,
-          title: song.trackName || 'Pop Hit',
+          id: `track-${song.trackId || i}`,
+          title: song.trackName || 'Song Hit',
           artist: song.artistName || 'Various Artists',
-          album: song.collectionName || 'Pop Hits',
+          album: song.collectionName || 'Album Hits',
           duration: durStr,
           audioUrl: song.previewUrl || '',
           coverUrl: song.artworkUrl100?.replace('100x100', '300x300') || 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=300',
           uri: `itunes:track:${song.trackId || i}`
         };
-      }).filter((track: any) => track.audioUrl);
-      
-      if (results.length > 0) {
-        res.json(results);
+      });
+
+      // Deduplicate by title + artist to ensure high variety
+      const seen = new Set<string>();
+      const uniqueTracks = formatted.filter((track: any) => {
+        const key = `${track.title.toLowerCase()}-${track.artist.toLowerCase()}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      if (uniqueTracks.length > 0) {
+        res.json(uniqueTracks);
         return;
       }
     }
@@ -247,53 +278,7 @@ app.get("/api/tracks", async (req, res) => {
     // Fail silently
   }
 
-  // Fallback to YTMusic search
-  try {
-    const songs1 = await ytmusic.searchSongs("Top 50 Global Songs 2024");
-    const songs2 = await ytmusic.searchSongs("Billboard Top 100 Hits");
-    const songs = [...songs1.slice(0, 15), ...songs2.slice(0, 15)];
-    
-    // Deduplicate songs by videoId
-    const seenIds = new Set<string>();
-    const uniqueSongs: any[] = [];
-    for (const s of songs) {
-      if (s.videoId && !seenIds.has(s.videoId)) {
-        seenIds.add(s.videoId);
-        uniqueSongs.push(s);
-      }
-    }
-
-    const results = uniqueSongs.map((song: any) => {
-      const durMatch = song.duration;
-      let durStr = "00:00";
-      if (typeof durMatch === 'number') {
-        const m = Math.floor(durMatch / 60);
-        const s = durMatch % 60;
-        durStr = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-      }
-      const songTitle = song.name || '';
-      const songArtist = song.artist?.name || 'Unknown';
-      return {
-        id: song.videoId,
-        title: songTitle,
-        artist: songArtist,
-        album: song.album?.name || '',
-        duration: durStr,
-        audioUrl: `/api/stream/${song.videoId}?title=${encodeURIComponent(songTitle)}&artist=${encodeURIComponent(songArtist)}`,
-        coverUrl: song.thumbnails?.[1]?.url || song.thumbnails?.[0]?.url || 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=300',
-        uri: `yt:track:${song.videoId}`
-      };
-    });
-    
-    if (results.length > 0) {
-      res.json(results);
-      return;
-    }
-  } catch (e: any) {
-    // Fail silently without clogging logs
-  }
-
-  // Tertiary rock-solid static fallback from pre-fetched top songs
+  // Tertiary rock-solid static fallback from pre-fetched top songs (rich mix of popular Western and Indian tracks)
   const hardcodedFallback = [
     {
       id: "track-101",
@@ -344,6 +329,36 @@ app.get("/api/tracks", async (req, res) => {
       audioUrl: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview116/v4/2b/04/65/2b0465c3-2db1-e461-2362-14b528456b8f/mzaf_1805426141027060154.plus.aac.p.m4a",
       coverUrl: "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/52/aa/85/52aa851f-15b7-6322-f91f-df84b15b7b19/190295978044.jpg/300x300bb.jpg",
       uri: "itunes:track:105"
+    },
+    {
+      id: "track-106",
+      title: "O Maahi",
+      artist: "Pritam & Arijit Singh",
+      album: "Dunki",
+      duration: "03:53",
+      audioUrl: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview126/v4/1f/26/66/1f2666d4-cb23-281b-53c2-d3b20755581e/mzaf_12920268502575218765.plus.aac.p.m4a",
+      coverUrl: "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/fa/69/0d/fa690db2-1e9d-c50d-d4d1-0f7962cf9b1a/8903431940954_cover.jpg/300x300bb.jpg",
+      uri: "itunes:track:106"
+    },
+    {
+      id: "track-107",
+      title: "Chaleya",
+      artist: "Anirudh Ravichander, Arijit Singh & Shilpa Rao",
+      album: "Jawan",
+      duration: "03:20",
+      audioUrl: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview126/v4/b8/9f/fa/b89ffab2-5a21-7f8a-40a1-2d7c0f135b91/mzaf_14959141052062590632.plus.aac.p.m4a",
+      coverUrl: "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/10/7b/25/107b2586-fa83-f39b-e2fb-a76472093845/8903431908480_cover.jpg/300x300bb.jpg",
+      uri: "itunes:track:107"
+    },
+    {
+      id: "track-108",
+      title: "Kesariya",
+      artist: "Pritam, Arijit Singh & Amitabh Bhattacharya",
+      album: "Brahmastra",
+      duration: "04:28",
+      audioUrl: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview122/v4/28/73/ca/2873ca2a-43cf-e836-81cf-619f7cc8c36b/mzaf_4021201550505105949.plus.aac.p.m4a",
+      coverUrl: "https://is1-ssl.mzstatic.com/image/thumb/Music112/v4/2c/08/9b/2c089b25-b461-9c3a-9694-877f0d0571d7/8903431835700_cover.jpg/300x300bb.jpg",
+      uri: "itunes:track:108"
     }
   ];
   res.json(hardcodedFallback);

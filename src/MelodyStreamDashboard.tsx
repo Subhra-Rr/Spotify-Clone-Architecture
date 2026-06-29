@@ -2647,8 +2647,12 @@ export default function MelodyStreamDashboard({
                                 {item.title}
                               </h3>
                               <p
-                                className="text-sm text-[#b3b3b3] truncate max-w-full font-medium"
+                                className="text-sm text-[#b3b3b3] truncate max-w-full font-medium hover:text-white hover:underline cursor-pointer"
                                 title={item.artist}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openArtistPage(item.artist);
+                                }}
                               >
                                 {item.artist}
                               </p>
@@ -2940,7 +2944,13 @@ export default function MelodyStreamDashboard({
                                   <h3 className="font-bold text-white text-[14px] sm:text-[15px] truncate max-w-full pb-0.5">
                                     {track.title}
                                   </h3>
-                                  <p className="text-xs sm:text-sm text-[#b3b3b3] truncate max-w-full">
+                                  <p 
+                                    className="text-xs sm:text-sm text-[#b3b3b3] hover:text-white hover:underline cursor-pointer truncate max-w-full"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openArtistPage(track.artist);
+                                    }}
+                                  >
                                     {track.artist}
                                   </p>
                                 </div>
@@ -4642,7 +4652,13 @@ export default function MelodyStreamDashboard({
               <span className="text-white text-sm font-bold truncate">
                 {currentTrack.title}
               </span>
-              <span className="text-[#b3b3b3] text-[13px] truncate">
+              <span
+                className="text-[#b3b3b3] text-[13px] truncate hover:text-white hover:underline cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openArtistPage(currentTrack.artist);
+                }}
+              >
                 {currentTrack.artist}
               </span>
             </div>

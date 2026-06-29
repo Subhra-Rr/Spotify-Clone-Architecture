@@ -126,11 +126,20 @@ export function LyricsDisplay({ artist, title, currentTime, duration }: LyricsDi
   }
   
   useEffect(() => {
-     // Scroll to active line
+     // Scroll to active line smoothly inside container
      if (currentLineIndex !== -1 && containerRef.current) {
-        const lineEl = containerRef.current.children[currentLineIndex] as HTMLElement;
-        if (lineEl) {
-           lineEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const container = containerRef.current;
+        const activeLine = container.children[currentLineIndex] as HTMLElement;
+        if (activeLine) {
+           const containerHeight = container.clientHeight;
+           const activeLineTop = activeLine.offsetTop;
+           const activeLineHeight = activeLine.clientHeight;
+           const targetScrollTop = activeLineTop - (containerHeight / 2) + (activeLineHeight / 2);
+           
+           container.scrollTo({
+             top: targetScrollTop,
+             behavior: 'smooth'
+           });
         }
      }
   }, [currentLineIndex]);
