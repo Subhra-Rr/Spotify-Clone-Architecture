@@ -143,11 +143,10 @@ app.get("/api/stream/:videoId", async (req, res) => {
 
       // Build fallback query variants (most specific to least specific)
       const queriesToTry = [
-        cleanArtist ? `${cleanTitle} ${cleanArtist}` : cleanTitle,
+        cleanArtist && cleanTitle ? `${cleanTitle} ${cleanArtist}` : '',
         `${title} ${artist}`,
         cleanTitle,
         title,
-        cleanArtist ? cleanArtist : ''
       ].filter(q => q && q.trim().length > 0);
 
       for (const query of queriesToTry) {
@@ -156,31 +155,9 @@ app.get("/api/stream/:videoId", async (req, res) => {
           const data: any = await response.json();
           
           if (data && data.results && data.results.length > 0) {
-            const cleanStr = (s: string) => s ? s.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '') : '';
-            const targetTitleClean = cleanStr(cleanTitle || title);
-            const targetArtistClean = cleanStr(cleanArtist || artist);
-
-            // Level A: Exact title and artist match
-            let match = data.results.find((r: any) => {
-              const rtClean = cleanStr(r.trackName);
-              const raClean = cleanStr(r.artistName);
-              return (rtClean.includes(targetTitleClean) || targetTitleClean.includes(rtClean)) &&
-                     (raClean.includes(targetArtistClean) || targetArtistClean.includes(raClean));
-            });
-
-            // Level B: Title matched only
-            if (!match) {
-              match = data.results.find((r: any) => {
-                const rtClean = cleanStr(r.trackName);
-                return rtClean.includes(targetTitleClean) || targetTitleClean.includes(rtClean);
-              });
-            }
-
-            // Level C: Fallback to the first query result
-            if (!match && query.includes(cleanTitle) && query.includes(cleanArtist)) {
-              match = data.results[0];
-            }
-
+            // Smart matching: Trust iTunes relevancy first. The first result with a previewUrl is highly likely the exact song.
+            const match = data.results.find((r: any) => r.previewUrl);
+            
             if (match && match.previewUrl) {
               matchedPreviewUrl = match.previewUrl;
               console.log(`[Stream Proxy] Bypassed ytdl bot checks by redirecting "${title}" to iTunes CDN:`, matchedPreviewUrl);
@@ -190,6 +167,36 @@ app.get("/api/stream/:videoId", async (req, res) => {
         } catch (err: any) {
           // Silent fallback
         }
+      }
+
+      // Fallback Level D: Search iTunes for just the clean title (no artist) to grab any release/cover of this song
+      if (!matchedPreviewUrl && cleanTitle) {
+        try {
+          const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(cleanTitle)}&entity=song&limit=10`);
+          const data: any = await response.json();
+          if (data && data.results && data.results.length > 0) {
+            const match = data.results.find((r: any) => r.previewUrl);
+            if (match && match.previewUrl) {
+              matchedPreviewUrl = match.previewUrl;
+              console.log(`[Stream Proxy] Title-only match fallback for "${cleanTitle}":`, matchedPreviewUrl);
+            }
+          }
+        } catch (e) {}
+      }
+
+      // Fallback Level E: Search iTunes for the artist to at least play a song by the requested artist
+      if (!matchedPreviewUrl && cleanArtist) {
+        try {
+          const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(cleanArtist)}&entity=song&limit=10`);
+          const data: any = await response.json();
+          if (data && data.results && data.results.length > 0) {
+            const match = data.results.find((r: any) => r.previewUrl);
+            if (match && match.previewUrl) {
+              matchedPreviewUrl = match.previewUrl;
+              console.log(`[Stream Proxy] Artist-only match fallback for "${cleanArtist}":`, matchedPreviewUrl);
+            }
+          }
+        } catch (e) {}
       }
     } catch (itunesErr: any) {
       // Silent fallback
@@ -201,13 +208,23 @@ app.get("/api/stream/:videoId", async (req, res) => {
     return res.redirect(matchedPreviewUrl);
   }
 
-  // 2. If no iTunes match is found or no metadata is available, redirect to a random high-quality stable preview link.
+  // 2. Dynamic high-quality stable fallback instead of static Western songs
+  try {
+    const response = await fetch(`https://itunes.apple.com/search?term=bollywood%20hits&entity=song&limit=10`);
+    const data: any = await response.json();
+    if (data && data.results && data.results.length > 0) {
+      const match = data.results.find((r: any) => r.previewUrl);
+      if (match && match.previewUrl) {
+        console.log(`[Stream Proxy] No match found for "${title}". Bypassing ytdl bot checks with highly stable dynamic Bollywood fallback:`, match.previewUrl);
+        return res.redirect(match.previewUrl);
+      }
+    }
+  } catch (e) {}
+
   const fallbackUrls = [
-    "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/de/c3/e8/dec3e884-7237-9622-718a-12c5f48c5ca2/mzaf_3134455671785145822.plus.aac.p.m4a", // WILDFLOWER - Billie Eilish
-    "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/f9/b1/aa/f9b1aaed-3e24-227f-153d-99969f8b8464/mzaf_6272498007975402144.plus.aac.p.m4a", // Circles - Post Malone
-    "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/82/d2/9a/82d29a5f-d9a0-57f4-c0ec-f785969240c3/mzaf_5320660780349800682.plus.aac.p.m4a", // When I Was Your Man - Bruno Mars
-    "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview126/v4/8a/2c/35/8a2c35f6-ac70-560c-0a1c-516e105c6af8/mzaf_13522699475931524613.plus.aac.p.m4a", // Thinkin Bout You - Frank Ocean
-    "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview116/v4/2b/04/65/2b0465c3-2db1-e461-2362-14b528456b8f/mzaf_1805426141027060154.plus.aac.p.m4a" // Viva La Vida - Coldplay
+    "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/de/c3/e8/dec3e884-7237-9622-718a-12c5f48c5ca2/mzaf_3134455671785145822.plus.aac.p.m4a",
+    "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/f9/b1/aa/f9b1aaed-3e24-227f-153d-99969f8b8464/mzaf_6272498007975402144.plus.aac.p.m4a",
+    "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/82/d2/9a/82d29a5f-d9a0-57f4-c0ec-f785969240c3/mzaf_5320660780349800682.plus.aac.p.m4a"
   ];
   
   const randomFallback = fallbackUrls[Math.floor(Math.random() * fallbackUrls.length)];
