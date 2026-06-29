@@ -52,32 +52,75 @@ export function LyricsDisplay({ artist, title, currentTime, duration }: LyricsDi
       setError(null);
       setLyrics(null);
       
+      // 1. Pre-clean metadata for high-probability precise matching
+      const cleanRegex = /\((official|video|audio|lyric|lyrics|ft\.|feat\.|with|hd|hq|4k|remix|version|live|clip|full|exclusive|cover|karaoke|mp3|extended|edit)[^)]*\)|\[(official|video|audio|lyric|lyrics|ft\.|feat\.|with|hd|hq|4k|remix|version|live|clip|full|exclusive|cover|karaoke|mp3|extended|edit)[^\]]*\]/gi;
+      let cleanTitle = title.replace(cleanRegex, '');
+      cleanTitle = cleanTitle.replace(/(feat\.|ft\.|featuring|with|lyrics|official video|official audio|official music video|from the movie|from the album|from the ost|from ".*"|from '.*').*$/gi, '').trim();
+      
+      let cleanArtist = artist || '';
+      if (cleanArtist.toLowerCase().includes('topic')) {
+        cleanArtist = cleanArtist.replace(/topic/gi, '').trim();
+      }
+
+      // Check local storage cache first
+      const cacheKey = `lrclib_lyrics_${cleanArtist.toLowerCase()}_${cleanTitle.toLowerCase()}`;
       try {
-        // Try precise match first
-        let url = `https://lrclib.net/api/get?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(title)}`;
-        let res = await fetch(url);
-        let data = await res.json();
-        
-        let syncedLyrics = data?.syncedLyrics;
-        
-        // Fallback to search
-        if (!syncedLyrics) {
-            url = `https://lrclib.net/api/search?q=${encodeURIComponent(title + ' ' + artist)}`;
-            res = await fetch(url);
-            data = await res.json();
-            
-            if (Array.isArray(data) && data.length > 0) {
-                // Find first item with syncedLyrics
-                const item = data.find((d: any) => d.syncedLyrics);
-                if (item) {
-                   syncedLyrics = item.syncedLyrics;
-                }
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const parsedCache = JSON.parse(cached);
+          if (parsedCache && parsedCache.syncedLyrics) {
+            if (currentRequestRef.current === requestId) {
+              const parsed = parseLrc(parsedCache.syncedLyrics);
+              setLyrics(parsed);
+              setLoading(false);
+              return;
             }
+          }
         }
+      } catch (cacheErr) {
+        // Silently ignore cache parsing errors
+      }
+      
+      try {
+        // 2. Query precise API with clean metadata, original metadata, and search fallback in PARALLEL
+        const cleanGetUrl = `https://lrclib.net/api/get?artist_name=${encodeURIComponent(cleanArtist)}&track_name=${encodeURIComponent(cleanTitle)}`;
+        const originalGetUrl = `https://lrclib.net/api/get?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(title)}`;
+        const searchUrl = `https://lrclib.net/api/search?q=${encodeURIComponent(cleanTitle + ' ' + cleanArtist)}`;
+
+        const promises = [
+          fetch(cleanGetUrl).then(r => r.ok ? r.json() : null).catch(() => null),
+          fetch(originalGetUrl).then(r => r.ok ? r.json() : null).catch(() => null),
+          fetch(searchUrl).then(r => r.ok ? r.json() : null).catch(() => null)
+        ];
+
+        const [cleanGetData, originalGetData, searchData] = await Promise.all(promises);
         
         if (currentRequestRef.current !== requestId) return;
         
+        let syncedLyrics: string | null = null;
+
+        // Try clean precise match first
+        if (cleanGetData?.syncedLyrics) {
+          syncedLyrics = cleanGetData.syncedLyrics;
+        } 
+        // Try original precise match
+        else if (originalGetData?.syncedLyrics) {
+          syncedLyrics = originalGetData.syncedLyrics;
+        } 
+        // Fallback to searching
+        else if (Array.isArray(searchData) && searchData.length > 0) {
+          const matchedItem = searchData.find((item: any) => item.syncedLyrics);
+          if (matchedItem) {
+            syncedLyrics = matchedItem.syncedLyrics;
+          }
+        }
+        
         if (syncedLyrics) {
+           // Save to local cache
+           try {
+             localStorage.setItem(cacheKey, JSON.stringify({ syncedLyrics }));
+           } catch (e) {}
+
            const parsed = parseLrc(syncedLyrics);
            setLyrics(parsed);
         } else {
@@ -131,7 +174,11 @@ export function LyricsDisplay({ artist, title, currentTime, duration }: LyricsDi
   let currentLineIndex = -1;
   if (lyrics && lyrics.length > 0) {
     if (adjustedTime < lyrics[0].time) {
-      currentLineIndex = 0; // Pre-highlight first line in intro state
+      if (lyrics[0].time - adjustedTime <= 3) {
+        currentLineIndex = 0;
+      } else {
+        currentLineIndex = -1;
+      }
     } else {
       currentLineIndex = lyrics.findIndex((line, idx) => {
         const nextLine = lyrics[idx + 1];
@@ -140,6 +187,13 @@ export function LyricsDisplay({ artist, title, currentTime, duration }: LyricsDi
       });
     }
   }
+
+  // Handle automatic scrolling during intro or inactive phase
+  useEffect(() => {
+    if (currentLineIndex === -1 && listRef.current && !userHasScrolled && !isDragging) {
+       setTranslateY(150);
+    }
+  }, [currentLineIndex, userHasScrolled, isDragging, lyrics]);
 
   // Handle automatic scrolling via translateY CSS transformation
   useEffect(() => {
