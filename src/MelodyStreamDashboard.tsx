@@ -4468,34 +4468,39 @@ export default function MelodyStreamDashboard({
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
-                className="flex items-center gap-4"
+                className="flex items-center gap-4 cursor-pointer select-none group/footer-track"
+                onClick={() => setIsMobilePlayerOpen(true)}
               >
                 <img
                   src={currentTrack.coverUrl}
-                  onClick={() => setIsMobilePlayerOpen(true)}
-                  className="w-14 h-14 rounded shadow-sm object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                  className="w-14 h-14 rounded shadow-sm object-cover cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
                   alt=""
                 />
                 <div className="flex flex-col overflow-hidden">
                   <div className="flex items-center gap-2">
                     <span
-                      onClick={() => setIsMobilePlayerOpen(true)}
-                      className="text-sm font-semibold text-white hover:underline cursor-pointer truncate max-w-full"
+                      className="text-sm font-semibold text-white group-hover/footer-track:underline cursor-pointer truncate max-w-full"
                     >
                       {currentTrack.title}
                     </span>
                     {isPlaying && <EqualizerIcon />}
                   </div>
                   <span
-                    className="text-xs text-[#b3b3b3] hover:text-white hover:underline cursor-pointer truncate max-w-full"
-                    onClick={() => openArtistPage(currentTrack.artist)}
+                    className="text-xs text-[#b3b3b3] hover:text-white hover:underline cursor-pointer truncate max-w-full relative z-10"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openArtistPage(currentTrack.artist);
+                    }}
                   >
                     {currentTrack.artist}
                   </span>
                 </div>
                 <button
-                  className={`${likedTracks.some((t) => t.id === currentTrack.id) ? "text-[#8b5cf6]" : "text-[#b3b3b3] hover:text-white"} ml-2 flex-shrink-0 transition-transform hover:scale-105`}
-                  onClick={() => toggleLike(currentTrack)}
+                  className={`${likedTracks.some((t) => t.id === currentTrack.id) ? "text-[#8b5cf6]" : "text-[#b3b3b3] hover:text-white"} ml-2 flex-shrink-0 transition-transform hover:scale-105 relative z-10`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleLike(currentTrack);
+                  }}
                 >
                   <Heart
                     className={`w-5 h-5 ${likedTracks.some((t) => t.id === currentTrack.id) ? "fill-current" : ""}`}
@@ -4762,6 +4767,7 @@ export default function MelodyStreamDashboard({
       <AnimatePresence>
         {isMobilePlayerOpen && currentTrack && (
           <motion.div
+            key="fullscreen-lyrics-overlay-sheet"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
