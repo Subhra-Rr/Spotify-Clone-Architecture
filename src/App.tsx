@@ -5,6 +5,8 @@ import { Music, Download, BadgeCheck, ExternalLink, Loader2 } from "lucide-react
 import { auth, googleProvider } from "./firebase";
 import {
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   onAuthStateChanged,
   signOut,
   User,
@@ -12,17 +14,40 @@ import {
 
 
 // Firebase Auth Screen Component
-function FirebaseAuthScreen({ onAuthSuccess, onContinueAsGuest }: { onAuthSuccess: () => void; onContinueAsGuest: () => void }) {
+function FirebaseAuthScreen({ 
+  onAuthSuccess, 
+  onContinueAsGuest,
+  externalError
+}: { 
+  onAuthSuccess: () => void; 
+  onContinueAsGuest: () => void;
+  externalError?: string | null;
+}) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    if (externalError) {
+      setError(externalError);
+    }
+  }, [externalError]);
 
   const handleGoogleAuth = async () => {
     setError("");
     setMessage("");
     try {
       googleProvider.setCustomParameters({ prompt: "select_account" });
-      await signInWithPopup(auth, googleProvider);
-      onAuthSuccess();
+      
+      // Detect mobile devices for a fully reliable authentication redirect
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      if (isMobile) {
+        setMessage("Redirecting to Google Sign-In...");
+        await signInWithRedirect(auth, googleProvider);
+      } else {
+        await signInWithPopup(auth, googleProvider);
+        onAuthSuccess();
+      }
     } catch (err: any) {
       setError(err.message || "Google Auth failed");
     }
@@ -171,6 +196,21 @@ function MainLayout() {
   const { isAuthenticated, bypass } = useAuth();
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [redirectError, setRedirectError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Check for redirect result on mount
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          console.log("Redirect sign-in successful:", result.user);
+        }
+      })
+      .catch((err) => {
+        console.error("Redirect sign-in error:", err);
+        setRedirectError(err.message || "Redirect authentication failed");
+      });
+  }, []);
 
   useEffect(() => {
     // Automatically trigger the standalone bypass so they are never blocked by connection screens
@@ -260,7 +300,13 @@ function MainLayout() {
     );
 
   if (!firebaseUser) {
-    return <FirebaseAuthScreen onAuthSuccess={() => {}} onContinueAsGuest={handleContinueAsGuest} />;
+    return (
+      <FirebaseAuthScreen 
+        onAuthSuccess={() => {}} 
+        onContinueAsGuest={handleContinueAsGuest} 
+        externalError={redirectError}
+      />
+    );
   }
 
   return <MelodyStreamDashboard user={firebaseUser} onLogout={handleLogout} />;
