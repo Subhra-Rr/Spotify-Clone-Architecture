@@ -123,10 +123,16 @@ app.get("/api/stream/:videoId", async (req, res) => {
       const cleanRegex = /\((official|video|audio|lyric|lyrics|ft\.|feat\.|with|hd|hq|4k|remix|version|live|clip|full|exclusive|cover|karaoke|mp3|extended|edit)[^)]*\)|\[(official|video|audio|lyric|lyrics|ft\.|feat\.|with|hd|hq|4k|remix|version|live|clip|full|exclusive|cover|karaoke|mp3|extended|edit)[^\]]*\]/gi;
       let cleanTitle = title.replace(cleanRegex, '');
       cleanTitle = cleanTitle.replace(/(feat\.|ft\.|featuring|with|lyrics|official video|official audio|official music video).*$/gi, '');
-      cleanTitle = cleanTitle.replace(/[^a-zA-Z0-9\s'&]/g, ' ').replace(/\s+/g, ' ').trim();
+      
+      // Preserve Unicode letters, numbers, spaces, and standard characters
+      cleanTitle = cleanTitle.replace(/[^\p{L}\p{N}\s'&]/gu, ' ').replace(/\s+/g, ' ').trim();
 
+      // Clean artist: filter out YouTube record company channel labels
+      const channelLabelsRegex = /\b(t-series|tseries|zee\s*music|sony\s*music|yrf|speed\s*records|music\s*company|official|records|music|distribution|hindi|punjabi|tamil|telugu)\b/gi;
       let cleanArtist = artist ? artist : '';
-      cleanArtist = cleanArtist.replace(/[^a-zA-Z0-9\s'&]/g, ' ').replace(/\s+/g, ' ').trim();
+      cleanArtist = cleanArtist.replace(channelLabelsRegex, '');
+      cleanArtist = cleanArtist.replace(/[^\p{L}\p{N}\s'&]/gu, ' ').replace(/\s+/g, ' ').trim();
+      
       if (cleanArtist.toLowerCase().includes('topic')) {
         cleanArtist = cleanArtist.replace(/topic/gi, '').trim();
       }
@@ -146,7 +152,7 @@ app.get("/api/stream/:videoId", async (req, res) => {
           const data: any = await response.json();
           
           if (data && data.results && data.results.length > 0) {
-            const cleanStr = (s: string) => s ? s.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+            const cleanStr = (s: string) => s ? s.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '') : '';
             const targetTitleClean = cleanStr(cleanTitle || title);
             const targetArtistClean = cleanStr(cleanArtist || artist);
 

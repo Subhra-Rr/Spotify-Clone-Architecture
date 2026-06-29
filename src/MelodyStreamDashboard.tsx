@@ -804,6 +804,14 @@ export default function MelodyStreamDashboard({
   };
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const mainContentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (mainContentRef.current) {
+      mainContentRef.current.scrollTop = 0;
+    }
+  }, [activeTab, viewingArtist]);
+
   const ytPlayerRef = useRef<any>(null);
   const playPauseRef = useRef<{
     isPlaying: boolean;
@@ -1110,8 +1118,11 @@ export default function MelodyStreamDashboard({
   const openArtistPage = (artistName: string) => {
     navigateTo("artist", artistName);
     setIsFetchingArtist(true);
+    setIsMobilePlayerOpen(false);
 
-    let queryForItunes = artistName;
+    // Extract primary artist to prevent search queries with multi-artist strings from failing on iTunes
+    const primaryArtist = artistName.split(/[,&]|\bfeat\b|\bfeaturing\b/gi)[0].trim();
+    let queryForItunes = primaryArtist;
     if (
       queryForItunes.toLowerCase().includes("krishna") &&
       !queryForItunes.toLowerCase().includes("kr$na")
@@ -2327,7 +2338,7 @@ export default function MelodyStreamDashboard({
           </div>
         </div>
 
-        <div className="flex-1 bg-[#121212] rounded-lg overflow-y-auto relative flex flex-col">
+        <div ref={mainContentRef} className="flex-1 bg-[#121212] rounded-lg overflow-y-auto relative flex flex-col">
           <div className="sticky top-0 z-50 flex items-center justify-between px-6 py-4 bg-[#121212]/90 backdrop-blur-md">
             <div className="flex items-center gap-2">
               <button
@@ -4781,7 +4792,10 @@ export default function MelodyStreamDashboard({
                   <h2 className="text-[24px] font-bold text-white truncate w-full mb-1">
                     {currentTrack.title}
                   </h2>
-                  <p className="text-[#b3b3b3] text-[16px] truncate w-full">
+                  <p 
+                    className="text-[#b3b3b3] text-[16px] truncate w-full hover:text-white hover:underline cursor-pointer"
+                    onClick={() => openArtistPage(currentTrack.artist)}
+                  >
                     {currentTrack.artist}
                   </p>
                 </div>
@@ -4895,6 +4909,7 @@ export default function MelodyStreamDashboard({
                   artist={currentTrack.artist}
                   title={currentTrack.title}
                   currentTime={progress}
+                  duration={duration}
                 />
               </div>
             </div>
