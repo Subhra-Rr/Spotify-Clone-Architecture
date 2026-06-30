@@ -90,7 +90,7 @@ export function LyricsDisplay({ artist, title, currentTime, duration }: LyricsDi
       
       // 1. Pre-clean metadata for high-probability precise matching
       const cleanRegex = /\((official|video|audio|lyric|lyrics|ft\.|feat\.|with|hd|hq|4k|remix|version|live|clip|full|exclusive|cover|karaoke|mp3|extended|edit)[^)]*\)|\[(official|video|audio|lyric|lyrics|ft\.|feat\.|with|hd|hq|4k|remix|version|live|clip|full|exclusive|cover|karaoke|mp3|extended|edit)[^\]]*\]/gi;
-      let cleanTitle = title.replace(cleanRegex, '');
+      let cleanTitle = title.replace(cleanRegex, '').trim();
       cleanTitle = cleanTitle.replace(/(feat\.|ft\.|featuring|with|lyrics|official video|official audio|official music video|from the movie|from the album|from the ost|from ".*"|from '.*').*$/gi, '').trim();
       
       let cleanArtist = artist || '';
@@ -137,15 +137,33 @@ export function LyricsDisplay({ artist, title, currentTime, duration }: LyricsDi
       }
       
       try {
-        const cleanGetUrl = `https://lrclib.net/api/get?artist_name=${encodeURIComponent(cleanArtist)}&track_name=${encodeURIComponent(cleanTitle)}`;
-        const originalGetUrl = `https://lrclib.net/api/get?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(title)}`;
-        const searchUrl = `https://lrclib.net/api/search?q=${encodeURIComponent(cleanTitle + ' ' + cleanArtist)}`;
+        const delimitersRegex = /(\s+feat\b\.?|\s+featuring\b|\s+ft\b\.?|\s*,\s*|\s+&\s+|\s+and\s+|\s*;\s*|\s*\|\s*|\s*\/\s*)/gi;
+        const targetArtists = cleanArtist.split(delimitersRegex).filter((_, idx) => idx % 2 === 0).map(s => s.trim().toLowerCase()).filter(Boolean);
+        const primaryArtist = targetArtists[0] || cleanArtist.toLowerCase();
 
-        // Start all fetches in parallel with an 1800ms timeout
-        const [cleanGetData, originalGetData, searchData] = await Promise.all([
-          fetchWithTimeout(cleanGetUrl, 1800),
-          originalGetUrl !== cleanGetUrl ? fetchWithTimeout(originalGetUrl, 1800) : Promise.resolve(null),
-          fetchWithTimeout(searchUrl, 1800)
+        const cleanGetUrl = `https://lrclib.net/api/get?artist_name=${encodeURIComponent(cleanArtist)}&track_name=${encodeURIComponent(cleanTitle)}`;
+        const primaryGetUrl = `https://lrclib.net/api/get?artist_name=${encodeURIComponent(primaryArtist)}&track_name=${encodeURIComponent(cleanTitle)}`;
+        const originalGetUrl = `https://lrclib.net/api/get?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(title)}`;
+        
+        const searchPrimaryUrl = `https://lrclib.net/api/search?q=${encodeURIComponent(cleanTitle + ' ' + primaryArtist)}`;
+        const searchTitleUrl = `https://lrclib.net/api/search?q=${encodeURIComponent(cleanTitle)}`;
+        const searchCleanUrl = `https://lrclib.net/api/search?q=${encodeURIComponent(cleanTitle + ' ' + cleanArtist)}`;
+
+        // Start all fetches in parallel with an 2000ms timeout
+        const [
+          cleanGetData,
+          primaryGetData,
+          originalGetData,
+          searchPrimaryData,
+          searchTitleData,
+          searchCleanData
+        ] = await Promise.all([
+          fetchWithTimeout(cleanGetUrl, 2000),
+          fetchWithTimeout(primaryGetUrl, 2000),
+          originalGetUrl !== cleanGetUrl ? fetchWithTimeout(originalGetUrl, 2000) : Promise.resolve(null),
+          fetchWithTimeout(searchPrimaryUrl, 2000),
+          fetchWithTimeout(searchTitleUrl, 2000),
+          fetchWithTimeout(searchCleanUrl, 2000)
         ]);
 
         if (currentRequestRef.current !== requestId) return;
@@ -153,29 +171,88 @@ export function LyricsDisplay({ artist, title, currentTime, duration }: LyricsDi
         let syncedLyrics: string | null = null;
         let plainLyrics: string | null = null;
 
-        // 1. Try clean precise match
+        const findMatchInSearch = (searchData: any, preferSynced: boolean) => {
+          if (!Array.isArray(searchData)) return null;
+          
+          const matchedItems = searchData.filter(item => {
+            if (!item) return false;
+            const itemTitle = (item.trackName || item.name || "").toLowerCase();
+            const itemArtist = (item.artistName || "").toLowerCase();
+            
+            // Check title match
+            const titleMatch = itemTitle.includes(cleanTitle.toLowerCase()) || cleanTitle.toLowerCase().includes(itemTitle);
+            if (!titleMatch) return false;
+            
+            // Check artist match: if any of our target artist names are found inside item's artist name or vice versa
+            const matchArtist = targetArtists.some(target => 
+              itemArtist.includes(target) || target.includes(itemArtist)
+            ) || itemArtist.includes(cleanArtist.toLowerCase()) || cleanArtist.toLowerCase().includes(itemArtist);
+            
+            return matchArtist;
+          });
+
+          if (matchedItems.length === 0) return null;
+
+          if (preferSynced) {
+            const syncedItem = matchedItems.find(item => item.syncedLyrics);
+            if (syncedItem) return syncedItem;
+          }
+          
+          return matchedItems[0];
+        };
+
+        // 1. Try clean precise match synced
         if (cleanGetData?.syncedLyrics) {
           syncedLyrics = cleanGetData.syncedLyrics;
-        } else if (cleanGetData?.plainLyrics) {
-          plainLyrics = cleanGetData.plainLyrics;
-        }
-
-        // 2. Try original precise match
-        if (!syncedLyrics && originalGetData?.syncedLyrics) {
+        } else if (primaryGetData?.syncedLyrics) {
+          syncedLyrics = primaryGetData.syncedLyrics;
+        } else if (originalGetData?.syncedLyrics) {
           syncedLyrics = originalGetData.syncedLyrics;
-        } else if (!plainLyrics && originalGetData?.plainLyrics) {
-          plainLyrics = originalGetData.plainLyrics;
         }
 
-        // 3. Try search matches
-        if (!syncedLyrics && !plainLyrics && Array.isArray(searchData) && searchData.length > 0) {
-          const syncedItem = searchData.find((item: any) => item.syncedLyrics);
-          if (syncedItem) {
-            syncedLyrics = syncedItem.syncedLyrics;
+        // 2. Try search synced matches
+        if (!syncedLyrics) {
+          const matchPrimary = findMatchInSearch(searchPrimaryData, true);
+          if (matchPrimary?.syncedLyrics) {
+            syncedLyrics = matchPrimary.syncedLyrics;
           } else {
-            const plainItem = searchData.find((item: any) => item.plainLyrics);
-            if (plainItem) {
-              plainLyrics = plainItem.plainLyrics;
+            const matchClean = findMatchInSearch(searchCleanData, true);
+            if (matchClean?.syncedLyrics) {
+              syncedLyrics = matchClean.syncedLyrics;
+            } else {
+              const matchTitle = findMatchInSearch(searchTitleData, true);
+              if (matchTitle?.syncedLyrics) {
+                syncedLyrics = matchTitle.syncedLyrics;
+              }
+            }
+          }
+        }
+
+        // 3. Try precise match plain
+        if (!syncedLyrics) {
+          if (cleanGetData?.plainLyrics) {
+            plainLyrics = cleanGetData.plainLyrics;
+          } else if (primaryGetData?.plainLyrics) {
+            plainLyrics = primaryGetData.plainLyrics;
+          } else if (originalGetData?.plainLyrics) {
+            plainLyrics = originalGetData.plainLyrics;
+          }
+        }
+
+        // 4. Try search plain matches
+        if (!syncedLyrics && !plainLyrics) {
+          const matchPrimary = findMatchInSearch(searchPrimaryData, false);
+          if (matchPrimary?.plainLyrics) {
+            plainLyrics = matchPrimary.plainLyrics;
+          } else {
+            const matchClean = findMatchInSearch(searchCleanData, false);
+            if (matchClean?.plainLyrics) {
+              plainLyrics = matchClean.plainLyrics;
+            } else {
+              const matchTitle = findMatchInSearch(searchTitleData, false);
+              if (matchTitle?.plainLyrics) {
+                plainLyrics = matchTitle.plainLyrics;
+              }
             }
           }
         }
