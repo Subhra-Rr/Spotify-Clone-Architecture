@@ -1149,12 +1149,20 @@ export default function MelodyStreamDashboard({
               const artistLower = item.artistName.toLowerCase();
               const searchedLower = artistName.toLowerCase();
               const primaryLower = primaryArtist.toLowerCase();
-              return (
-                artistLower.includes(searchedLower) ||
-                artistLower.includes(primaryLower) ||
-                searchedLower.includes(artistLower) ||
-                primaryLower.includes(artistLower)
-              );
+              
+              const songArtists = artistLower.split(/[,&]|\bfeat\b|\bfeaturing\b|\bft\b/gi).map((s: string) => s.trim()).filter(Boolean);
+              return songArtists.some((songArtist: string) => {
+                if (songArtist === searchedLower || songArtist === primaryLower) {
+                  return true;
+                }
+                if (songArtist.includes(searchedLower) && searchedLower.length >= 4) {
+                  return true;
+                }
+                if (songArtist.includes(primaryLower) && primaryLower.length >= 4) {
+                  return true;
+                }
+                return false;
+              });
             })
             .map((item: any) => ({
               id: item.trackId.toString(),
@@ -1188,12 +1196,20 @@ export default function MelodyStreamDashboard({
               const artistLower = item.artistName.toLowerCase();
               const searchedLower = artistName.toLowerCase();
               const primaryLower = primaryArtist.toLowerCase();
-              return (
-                artistLower.includes(searchedLower) ||
-                artistLower.includes(primaryLower) ||
-                searchedLower.includes(artistLower) ||
-                primaryLower.includes(artistLower)
-              );
+              
+              const albumArtists = artistLower.split(/[,&]|\bfeat\b|\bfeaturing\b|\bft\b/gi).map((s: string) => s.trim()).filter(Boolean);
+              return albumArtists.some((albumArtist: string) => {
+                if (albumArtist === searchedLower || albumArtist === primaryLower) {
+                  return true;
+                }
+                if (albumArtist.includes(searchedLower) && searchedLower.length >= 4) {
+                  return true;
+                }
+                if (albumArtist.includes(primaryLower) && primaryLower.length >= 4) {
+                  return true;
+                }
+                return false;
+              });
             })
             .map((item: any) => ({
               id: item.collectionId.toString(),
@@ -2768,45 +2784,54 @@ export default function MelodyStreamDashboard({
                           Popular artists
                         </h2>
                         <div className="flex overflow-x-auto no-scrollbar gap-4 pb-4 scroll-smooth snap-x w-full">
-                          {(
-                            Array.from(
-                              new Set(tracks.map((t) => t.artist)),
-                            ) as string[]
-                          )
-                            .slice(0, 10)
-                            .map((artistName, idx) => {
-                              const artistTrack = tracks.find(
-                                (t) => t.artist === artistName,
-                              );
-                              const artistImg =
-                                artistTrack?.coverUrl ||
-                                "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=150&auto=format&fit=crop";
-                              return (
+                          {(() => {
+                            const delimitersRegex = /(\s+feat\b\.?|\s+featuring\b|\s+ft\b\.?|\s*,\s*|\s+&\s+|\s+and\s+)/gi;
+                            const individualArtistsList: { name: string; coverUrl: string }[] = [];
+                            const seen = new Set<string>();
+
+                            tracks.forEach((track) => {
+                              if (!track.artist) return;
+                              const parts = track.artist.split(delimitersRegex);
+                              parts.forEach((part, idx) => {
+                                if (idx % 2 === 0) {
+                                  const trimmed = part.trim();
+                                  if (trimmed && !seen.has(trimmed.toLowerCase())) {
+                                    seen.add(trimmed.toLowerCase());
+                                    individualArtistsList.push({
+                                      name: trimmed,
+                                      coverUrl: track.coverUrl || "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=150&auto=format&fit=crop",
+                                    });
+                                  }
+                                }
+                              });
+                            });
+
+                            return individualArtistsList
+                              .slice(0, 10)
+                              .map((artist, idx) => (
                                 <motion.div
-                                  key={`artist-circle-${artistName}-${idx}`}
+                                  key={`artist-circle-${artist.name}-${idx}`}
                                   whileHover={{ scale: 1.05 }}
                                   whileTap={{ scale: 0.95 }}
-                                  onClick={() =>
-                                    navigateTo("artist", artistName)
-                                  }
+                                  onClick={() => openArtistPage(artist.name)}
                                   className="flex flex-col items-center gap-2 cursor-pointer shrink-0 snap-start w-[110px] group"
                                 >
                                   <div className="w-[96px] h-[96px] rounded-full overflow-hidden shadow-lg border border-[#282828] relative">
                                     <img
-                                      src={artistImg}
+                                      src={artist.coverUrl}
                                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                      alt={artistName}
+                                      alt={artist.name}
                                     />
                                     <div className="absolute inset-0 bg-black/10 group-hover:bg-black/35 transition-all duration-300 flex items-center justify-center">
                                       <Play className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 transition-all duration-300 fill-current" />
                                     </div>
                                   </div>
                                   <span className="text-xs font-bold text-[#eaeaea] text-center truncate w-full px-1">
-                                    {artistName}
+                                    {artist.name}
                                   </span>
                                 </motion.div>
-                              );
-                            })}
+                              ));
+                          })()}
                         </div>
                       </div>
                     )}
@@ -5031,16 +5056,38 @@ export default function MelodyStreamDashboard({
                 </button>
               </li>
               <li className="border-t border-[#3e3e3e] my-1"></li>
-              <li>
-                <button
-                  onClick={() => {
-                    openArtistPage(trackMenuContext.track.artist);
-                  }}
-                  className="w-full text-left px-3 py-2 text-sm text-[#eaeaea] font-semibold hover:bg-[#3e3e3e] hover:text-white rounded-sm transition-colors"
-                >
-                  Go to artist
-                </button>
-              </li>
+              {(() => {
+                const delimitersRegex = /(\s+feat\b\.?|\s+featuring\b|\s+ft\b\.?|\s*,\s*|\s+&\s+|\s+and\s+)/gi;
+                const artistsList = trackMenuContext.track.artist.split(delimitersRegex).filter((_, idx) => idx % 2 === 0).map(s => s.trim()).filter(Boolean);
+                
+                if (artistsList.length <= 1) {
+                  return (
+                    <li>
+                      <button
+                        onClick={() => {
+                          openArtistPage(trackMenuContext.track.artist);
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm text-[#eaeaea] font-semibold hover:bg-[#3e3e3e] hover:text-white rounded-sm transition-colors"
+                      >
+                        Go to artist
+                      </button>
+                    </li>
+                  );
+                } else {
+                  return artistsList.map((artistName) => (
+                    <li key={`menu-artist-${artistName}`}>
+                      <button
+                        onClick={() => {
+                          openArtistPage(artistName);
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm text-[#eaeaea] font-semibold hover:bg-[#3e3e3e] hover:text-white rounded-sm transition-colors"
+                      >
+                        Go to {artistName}
+                      </button>
+                    </li>
+                  ));
+                }
+              })()}
             </ul>
           </motion.div>
         )}
