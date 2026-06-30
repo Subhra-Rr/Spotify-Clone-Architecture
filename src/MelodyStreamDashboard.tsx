@@ -64,6 +64,7 @@ import { PremiumPage } from "./components/PremiumPage";
 import { useAudioDB } from "./hooks/useAudioDB";
 import { ProfilePhotoEditModal } from "./components/ProfilePhotoEditModal";
 import { LyricsDisplay } from "./components/LyricsDisplay";
+import { ClickableArtists } from "./components/ClickableArtists";
 
 enum OperationType {
   CREATE = "create",
@@ -1142,20 +1143,33 @@ export default function MelodyStreamDashboard({
     ])
       .then(([songsData, albumsData]) => {
         if (songsData && songsData.results) {
-          const parsedResults: Track[] = songsData.results.map((item: any) => ({
-            id: item.trackId.toString(),
-            title: item.trackName,
-            artist: item.artistName,
-            album: item.collectionName,
-            duration: formatTime(
-              Math.floor((item.trackTimeMillis || 0) / 1000),
-            ),
-            audioUrl: item.previewUrl || "",
-            coverUrl:
-              item.artworkUrl100?.replace("100x100", "300x300") ||
-              "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=100&auto=format&fit=crop",
-            uri: item.trackViewUrl,
-          }));
+          const parsedResults: Track[] = songsData.results
+            .filter((item: any) => {
+              if (!item.artistName) return false;
+              const artistLower = item.artistName.toLowerCase();
+              const searchedLower = artistName.toLowerCase();
+              const primaryLower = primaryArtist.toLowerCase();
+              return (
+                artistLower.includes(searchedLower) ||
+                artistLower.includes(primaryLower) ||
+                searchedLower.includes(artistLower) ||
+                primaryLower.includes(artistLower)
+              );
+            })
+            .map((item: any) => ({
+              id: item.trackId.toString(),
+              title: item.trackName,
+              artist: item.artistName,
+              album: item.collectionName,
+              duration: formatTime(
+                Math.floor((item.trackTimeMillis || 0) / 1000),
+              ),
+              audioUrl: item.previewUrl || "",
+              coverUrl:
+                item.artworkUrl100?.replace("100x100", "300x300") ||
+                "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=100&auto=format&fit=crop",
+              uri: item.trackViewUrl,
+            }));
           parsedResults.sort(
             (a, b) =>
               getPlayCountRaw(b.title, b.artist) -
@@ -1167,17 +1181,31 @@ export default function MelodyStreamDashboard({
         }
 
         if (albumsData && albumsData.results) {
-          const parsedAlbums: Album[] = albumsData.results.map((item: any) => ({
-            id: item.collectionId.toString(),
-            name: item.collectionName,
-            coverUrl:
-              item.artworkUrl100?.replace("100x100", "300x300") ||
-              "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=300&auto=format&fit=crop",
-            year: item.releaseDate
-              ? item.releaseDate.substring(0, 4)
-              : "Unknown",
-            type: "Album",
-          }));
+          const parsedAlbums: Album[] = albumsData.results
+            .filter((item: any) => {
+              if (!item.collectionId || !item.collectionName) return false;
+              if (!item.artistName) return false;
+              const artistLower = item.artistName.toLowerCase();
+              const searchedLower = artistName.toLowerCase();
+              const primaryLower = primaryArtist.toLowerCase();
+              return (
+                artistLower.includes(searchedLower) ||
+                artistLower.includes(primaryLower) ||
+                searchedLower.includes(artistLower) ||
+                primaryLower.includes(artistLower)
+              );
+            })
+            .map((item: any) => ({
+              id: item.collectionId.toString(),
+              name: item.collectionName,
+              coverUrl:
+                item.artworkUrl100?.replace("100x100", "300x300") ||
+                "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=300&auto=format&fit=crop",
+              year: item.releaseDate
+                ? item.releaseDate.substring(0, 4)
+                : "Unknown",
+              type: "Album",
+            }));
           setArtistAlbums(
             parsedAlbums.filter(
               (v, i, a) => a.findIndex((t) => t.id === v.id) === i,
@@ -2646,16 +2674,11 @@ export default function MelodyStreamDashboard({
                               <h3 className="font-bold text-white text-[15px] truncate max-w-full pb-1">
                                 {item.title}
                               </h3>
-                              <p
-                                className="text-sm text-[#b3b3b3] truncate max-w-full font-medium hover:text-white hover:underline cursor-pointer"
-                                title={item.artist}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openArtistPage(item.artist);
-                                }}
-                              >
-                                {item.artist}
-                              </p>
+                              <ClickableArtists
+                                artist={item.artist}
+                                onArtistClick={openArtistPage}
+                                className="text-sm text-[#b3b3b3] truncate max-w-full font-medium block"
+                              />
                             </div>
                           </motion.div>
                         ))
@@ -2872,15 +2895,11 @@ export default function MelodyStreamDashboard({
                               <h3 className="font-bold text-white text-[14px] sm:text-[15px] truncate max-w-full pb-0.5">
                                 {title}
                               </h3>
-                              <p
-                                className="text-xs sm:text-sm text-[#b3b3b3] hover:text-white hover:underline truncate max-w-full line-clamp-1 cursor-pointer"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openArtistPage(subtitle);
-                                }}
-                              >
-                                {subtitle}
-                              </p>
+                              <ClickableArtists
+                                artist={subtitle}
+                                onArtistClick={openArtistPage}
+                                className="text-xs sm:text-sm text-[#b3b3b3] truncate max-w-full block"
+                              />
                             </div>
                           </motion.div>
                         );
@@ -2944,15 +2963,11 @@ export default function MelodyStreamDashboard({
                                   <h3 className="font-bold text-white text-[14px] sm:text-[15px] truncate max-w-full pb-0.5">
                                     {track.title}
                                   </h3>
-                                  <p 
-                                    className="text-xs sm:text-sm text-[#b3b3b3] hover:text-white hover:underline cursor-pointer truncate max-w-full"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      openArtistPage(track.artist);
-                                    }}
-                                  >
-                                    {track.artist}
-                                  </p>
+                                  <ClickableArtists
+                                    artist={track.artist}
+                                    onArtistClick={openArtistPage}
+                                    className="text-xs sm:text-sm text-[#b3b3b3] truncate max-w-full block"
+                                  />
                                 </div>
                               </motion.div>
                             ))}
@@ -3065,15 +3080,11 @@ export default function MelodyStreamDashboard({
                             <h3 className="font-bold text-white text-[15px] truncate max-w-full pb-1">
                               {item.title}
                             </h3>
-                            <p
-                              className="text-sm text-[#b3b3b3] hover:text-white hover:underline truncate max-w-full line-clamp-2 cursor-pointer"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openArtistPage(item.artist);
-                              }}
-                            >
-                              {item.artist}
-                            </p>
+                            <ClickableArtists
+                              artist={item.artist}
+                              onArtistClick={openArtistPage}
+                              className="text-sm text-[#b3b3b3] truncate max-w-full block"
+                            />
                           </div>
                         </div>
                       ))}
@@ -3195,15 +3206,11 @@ export default function MelodyStreamDashboard({
                           <h3 className="font-bold text-white text-[15px] truncate max-w-full pb-1">
                             {item.title}
                           </h3>
-                          <p
-                            className="text-sm text-[#b3b3b3] hover:text-white hover:underline truncate max-w-full line-clamp-2 cursor-pointer"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openArtistPage(item.artist);
-                            }}
-                          >
-                            {item.artist}
-                          </p>
+                          <ClickableArtists
+                            artist={item.artist}
+                            onArtistClick={openArtistPage}
+                            className="text-sm text-[#b3b3b3] truncate max-w-full block"
+                          />
                         </div>
                       </motion.div>
                     ))}
@@ -3383,15 +3390,11 @@ export default function MelodyStreamDashboard({
                             >
                               {item.title}
                             </span>
-                            <span
-                              className="text-[#b3b3b3] hover:text-white hover:underline truncate text-sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openArtistPage(item.artist);
-                              }}
-                            >
-                              {item.artist}
-                            </span>
+                            <ClickableArtists
+                              artist={item.artist}
+                              onArtistClick={openArtistPage}
+                              className="text-[#b3b3b3] truncate text-sm block"
+                            />
                           </div>
                         </div>
                         <div className="flex-1 text-[#b3b3b3] text-sm hidden md:block truncate pr-4">
@@ -3775,15 +3778,11 @@ export default function MelodyStreamDashboard({
                                 >
                                   {item.title}
                                 </span>
-                                <span
-                                  className="text-[#b3b3b3] hover:text-white hover:underline truncate text-sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openArtistPage(item.artist);
-                                  }}
-                                >
-                                  {item.artist}
-                                </span>
+                                <ClickableArtists
+                                  artist={item.artist}
+                                  onArtistClick={openArtistPage}
+                                  className="text-[#b3b3b3] truncate text-sm block"
+                                />
                               </div>
                             </div>
 
@@ -4382,15 +4381,11 @@ export default function MelodyStreamDashboard({
                         <span className="text-[#8b5cf6] hover:underline cursor-pointer truncate text-[15px]">
                           {currentTrack.title}
                         </span>
-                        <span
-                          className="text-[#b3b3b3] hover:text-white hover:underline truncate text-sm cursor-pointer"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openArtistPage(currentTrack.artist);
-                          }}
-                        >
-                          {currentTrack.artist}
-                        </span>
+                        <ClickableArtists
+                          artist={currentTrack.artist}
+                          onArtistClick={openArtistPage}
+                          className="text-[#b3b3b3] truncate text-sm block"
+                        />
                       </div>
                     </div>
                   ) : (
@@ -4432,15 +4427,11 @@ export default function MelodyStreamDashboard({
                             <span className="text-white hover:underline truncate text-[15px]">
                               {item.title}
                             </span>
-                            <span
-                              className="text-[#b3b3b3] hover:text-white hover:underline truncate text-sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openArtistPage(item.artist);
-                              }}
-                            >
-                              {item.artist}
-                            </span>
+                            <ClickableArtists
+                              artist={item.artist}
+                              onArtistClick={openArtistPage}
+                              className="text-[#b3b3b3] truncate text-sm block"
+                            />
                           </div>
                         </div>
                       ))}
@@ -4485,15 +4476,11 @@ export default function MelodyStreamDashboard({
                     </span>
                     {isPlaying && <EqualizerIcon />}
                   </div>
-                  <span
-                    className="text-xs text-[#b3b3b3] hover:text-white hover:underline cursor-pointer truncate max-w-full relative z-10"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openArtistPage(currentTrack.artist);
-                    }}
-                  >
-                    {currentTrack.artist}
-                  </span>
+                  <ClickableArtists
+                    artist={currentTrack.artist}
+                    onArtistClick={openArtistPage}
+                    className="text-xs text-[#b3b3b3] truncate max-w-full relative z-10 block"
+                  />
                 </div>
                 <button
                   className={`${likedTracks.some((t) => t.id === currentTrack.id) ? "text-[#8b5cf6]" : "text-[#b3b3b3] hover:text-white"} ml-2 flex-shrink-0 transition-transform hover:scale-105 relative z-10`}
@@ -4661,15 +4648,11 @@ export default function MelodyStreamDashboard({
               <span className="text-white text-sm font-bold truncate">
                 {currentTrack.title}
               </span>
-              <span
-                className="text-[#b3b3b3] text-[13px] truncate hover:text-white hover:underline cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openArtistPage(currentTrack.artist);
-                }}
-              >
-                {currentTrack.artist}
-              </span>
+              <ClickableArtists
+                artist={currentTrack.artist}
+                onArtistClick={openArtistPage}
+                className="text-[#b3b3b3] text-[13px] truncate block"
+              />
             </div>
           </div>
           <div className="flex items-center gap-3 shrink-0 pr-2">
@@ -4800,13 +4783,24 @@ export default function MelodyStreamDashboard({
                     {currentTrack.album || currentTrack.artist}
                   </p>
                 </div>
-                <button className="text-white p-2 shrink-0 bg-white/10 hover:bg-white/20 rounded-full hover:scale-105 transition-all">
+                <button 
+                  onClick={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setTrackMenuContext({
+                      x: rect.left - 180,
+                      y: rect.bottom + 10,
+                      track: currentTrack
+                    });
+                  }}
+                  className="text-white p-2 shrink-0 bg-white/10 hover:bg-white/20 rounded-full hover:scale-105 transition-all"
+                  title="More options"
+                >
                   <MoreHorizontal className="w-6 h-6" />
                 </button>
               </div>
 
-              {/* Main Content Pane: Dual columns on desktop (>=md), Single stacked column on mobile */}
-              <div className="flex flex-col md:grid md:grid-cols-2 md:gap-12 md:items-center md:flex-1 md:mt-2">
+              {/* Main Content Pane: Single stacked column on both mobile and desktop */}
+              <div className="flex flex-col gap-6 items-center flex-1 mt-2 max-w-[450px] mx-auto w-full">
                 
                 {/* COLUMN 1: Artwork & Dynamic Controls */}
                 <div className="flex flex-col justify-center flex-1 w-full max-w-[360px] md:max-w-[420px] mx-auto">
@@ -4829,15 +4823,14 @@ export default function MelodyStreamDashboard({
                       <h2 className="text-[22px] md:text-[28px] font-bold text-white truncate w-full tracking-tight">
                         {currentTrack.title}
                       </h2>
-                      <p 
-                        className="text-[#b3b3b3] text-[15px] md:text-[17px] truncate w-full hover:text-white hover:underline cursor-pointer transition-colors mt-0.5"
-                        onClick={() => {
+                      <ClickableArtists
+                        artist={currentTrack.artist}
+                        onArtistClick={(artistName) => {
                           setIsMobilePlayerOpen(false);
-                          openArtistPage(currentTrack.artist);
+                          openArtistPage(artistName);
                         }}
-                      >
-                        {currentTrack.artist}
-                      </p>
+                        className="text-[#b3b3b3] text-[15px] md:text-[17px] truncate w-full block mt-0.5"
+                      />
                     </div>
                     <button
                       onClick={() => toggleLike(currentTrack)}
@@ -4942,10 +4935,10 @@ export default function MelodyStreamDashboard({
                 </div>
 
                 {/* COLUMN 2: Lyrics Engine, Utilities & Sharing */}
-                <div className="flex flex-col flex-1 w-full mt-4 md:mt-0 md:h-[calc(100vh-160px)] overflow-hidden justify-start">
+                <div className="flex flex-col flex-1 w-full mt-4 justify-start">
                   
                   {/* Lyrics area container */}
-                  <div className="flex-1 overflow-y-auto no-scrollbar py-2 w-full max-h-[380px] md:max-h-full">
+                  <div className="flex-1 py-2 w-full">
                     <LyricsDisplay
                       artist={currentTrack.artist}
                       title={currentTrack.title}
@@ -4956,7 +4949,14 @@ export default function MelodyStreamDashboard({
 
                   {/* Share and other quick utilities footer */}
                   <div className="flex justify-between items-center pt-4 mt-4 mb-2 shrink-0 border-t border-white/10 w-full px-1">
-                    <button className="text-white/50 hover:text-white transition-colors p-1" title="Lyrics list">
+                    <button 
+                      onClick={() => {
+                        setIsMobilePlayerOpen(false);
+                        navigateTo("queue");
+                      }}
+                      className="text-white/50 hover:text-white transition-all hover:scale-110 active:scale-90 p-1" 
+                      title="View Queue"
+                    >
                       <svg
                         viewBox="0 0 24 24"
                         width="22"
