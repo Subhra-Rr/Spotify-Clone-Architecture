@@ -19,7 +19,7 @@ if ((global as any).__dirname === ".") {
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.NODE_ENV === "production" ? (process.env.PORT ? parseInt(process.env.PORT, 10) : 3000) : 3000;
 
 // Custom CORS middleware to allow standalone desktop clients (e.g., file://) to query our backend endpoints
 app.use((req, res, next) => {
@@ -516,8 +516,12 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    app.get('*all', (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
+    app.use((req, res, next) => {
+      if (!req.path.startsWith("/api")) {
+        res.sendFile(path.join(distPath, "index.html"));
+      } else {
+        next();
+      }
     });
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`Server running on http://localhost:${PORT}`);
