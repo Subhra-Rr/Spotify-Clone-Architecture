@@ -2588,8 +2588,15 @@ export default function MelodyStreamDashboard({
           <div
             className={`p-6 pt-0 pb-20 ${activeTab === "premium" ? "hidden" : "bg-gradient-to-b from-[#2a2a2a] to-[#121212]"} flex-1`}
           >
-            {activeTab === "home" && (
-              <>
+            <AnimatePresence mode="wait">
+              {activeTab === "home" && (
+                <motion.div
+                  key="tab-home"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  transition={{ duration: 0.25 }}
+                >
                 <div className="flex justify-between items-center mb-4 mt-6">
                   <h2 className="text-2xl font-bold text-white tracking-tight">
                     {new Date().getHours() < 12
@@ -3001,11 +3008,18 @@ export default function MelodyStreamDashboard({
                     )}
                   </div>
                 )}
-              </>
-            )}
+                </motion.div>
+              )}
 
             {activeTab === "search" && (
-              <div className="mt-8">
+              <motion.div
+                key="tab-search"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.25 }}
+                className="mt-8"
+              >
                 {!searchQuery && recentQueries.length > 0 && (
                   <div className="mb-10">
                     <div className="flex justify-between items-end mb-4">
@@ -3162,21 +3176,25 @@ export default function MelodyStreamDashboard({
                   </div>
                 ) : searchQuery ? (
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
-                    {sortedSearchResults.map((item, i) => (
-                      <motion.div
-                        key={`search-${item.id}-${i}`}
-                        whileHover={{
-                          scale: 1.04,
-                          y: -4,
-                          boxShadow:
-                            "0 20px 25px -5px rgba(0,0,0,0.5), 0 10px 10px -5px rgba(0,0,0,0.5)",
-                        }}
-                        whileTap={{ scale: 0.96 }}
-                        transition={{
-                          type: "spring",
-                          stiffness: 350,
-                          damping: 20,
-                        }}
+                    <AnimatePresence mode="popLayout">
+                      {sortedSearchResults.map((item, i) => (
+                        <motion.div
+                          key={`search-${item.id}-${i}`}
+                          initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95, y: -15 }}
+                          whileHover={{
+                            scale: 1.04,
+                            y: -4,
+                            boxShadow:
+                              "0 20px 25px -5px rgba(0,0,0,0.5), 0 10px 10px -5px rgba(0,0,0,0.5)",
+                          }}
+                          whileTap={{ scale: 0.96 }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 350,
+                            damping: 20,
+                          }}
                         className="bg-[#181818] p-4 rounded-md cursor-pointer hover:bg-[#282828] transition-all duration-300 group flex flex-col shadow-lg"
                         onClick={() => {
                           handleTrackSelect(i, sortedSearchResults);
@@ -3239,6 +3257,7 @@ export default function MelodyStreamDashboard({
                         </div>
                       </motion.div>
                     ))}
+                    </AnimatePresence>
                   </div>
                 ) : (
                   <div className="pb-20">
@@ -3310,11 +3329,18 @@ export default function MelodyStreamDashboard({
                     </p>
                   </div>
                 )}
-              </div>
+              </motion.div>
             )}
 
             {activeTab === "liked" && (
-              <div className="mt-8">
+              <motion.div
+                key="tab-liked"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.25 }}
+                className="mt-8"
+              >
                 <div className="flex items-center gap-6 mb-8 mt-4">
                   <div className="w-32 h-32 rounded shadow-[0_8px_24px_rgba(0,0,0,0.5)] bg-gradient-to-br from-indigo-700 to-indigo-300 flex items-center justify-center flex-shrink-0">
                     <Heart className="w-16 h-16 text-white fill-current" />
@@ -3362,16 +3388,20 @@ export default function MelodyStreamDashboard({
                   </div>
                 ) : (
                   <div className="flex flex-col gap-2">
-                    {likedTracks.map((item, i) => (
-                      <motion.div
-                        key={`liked-${item.id}-${i}`}
-                        whileHover={{ scale: 1.01, x: 4 }}
-                        whileTap={{ scale: 0.99 }}
-                        transition={{
-                          type: "spring",
-                          stiffness: 400,
-                          damping: 25,
-                        }}
+                    <AnimatePresence mode="popLayout">
+                      {likedTracks.map((item, i) => (
+                        <motion.div
+                          key={`liked-${item.id}-${i}`}
+                          initial={{ opacity: 0, y: 15 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, x: -30, scale: 0.95 }}
+                          whileHover={{ scale: 1.01, x: 4 }}
+                          whileTap={{ scale: 0.99 }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 400,
+                            damping: 25,
+                          }}
                         className={`flex items-center justify-between p-2 rounded-md hover:bg-[#2a2a2a] group cursor-pointer ${queue === likedTracks && currentTrackIndex === i ? "bg-[#2a2a2a]" : ""}`}
                         onClick={() => handleTrackSelect(i, likedTracks)}
                         onContextMenu={(e) => handleTrackContextMenu(e, item)}
@@ -3461,9 +3491,10 @@ export default function MelodyStreamDashboard({
                         </div>
                       </motion.div>
                     ))}
+                    </AnimatePresence>
                   </div>
                 )}
-              </div>
+              </motion.div>
             )}
 
             {activeTab === "playlist" &&
@@ -3476,7 +3507,14 @@ export default function MelodyStreamDashboard({
                   );
                 const plTracks = (pl.tracks.items || []).map((it) => it.track);
                 return (
-                  <div className="mt-8">
+                  <motion.div
+                    key={`tab-playlist-${pl.id}`}
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -15 }}
+                    transition={{ duration: 0.25 }}
+                    className="mt-8"
+                  >
                     <div className="flex items-end gap-6 mb-8 mt-4 group relative">
                       <EditablePlaylistCover
                         initialImageUrl={
@@ -3748,16 +3786,20 @@ export default function MelodyStreamDashboard({
                       </div>
                     ) : (
                       <div className="flex flex-col gap-2">
-                        {plTracks.map((item, i) => (
-                          <motion.div
-                            key={`pltrack-${item.id}-${i}`}
-                            whileHover={{ scale: 1.01, x: 4 }}
-                            whileTap={{ scale: 0.99 }}
-                            transition={{
-                              type: "spring",
-                              stiffness: 400,
-                              damping: 25,
-                            }}
+                        <AnimatePresence mode="popLayout">
+                          {plTracks.map((item, i) => (
+                            <motion.div
+                              key={`pltrack-${item.id}-${i}`}
+                              initial={{ opacity: 0, y: 15 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, x: -30, scale: 0.95 }}
+                              whileHover={{ scale: 1.01, x: 4 }}
+                              whileTap={{ scale: 0.99 }}
+                              transition={{
+                                type: "spring",
+                                stiffness: 400,
+                                damping: 25,
+                              }}
                             className={`flex items-center justify-between p-2 rounded-md hover:bg-[#2a2a2a] group cursor-pointer ${queue === plTracks && currentTrackIndex === i ? "bg-[#2a2a2a]" : ""}`}
                             onClick={() => handleTrackSelect(i, plTracks)}
                             onContextMenu={(e) =>
@@ -3892,14 +3934,22 @@ export default function MelodyStreamDashboard({
                             </div>
                           </motion.div>
                         ))}
+                        </AnimatePresence>
                       </div>
                     )}
-                  </div>
+                  </motion.div>
                 );
               })()}
 
             {activeTab === "artist" && viewingArtist && (
-              <div className="mt-8">
+              <motion.div
+                key={`tab-artist-${viewingArtist}`}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.25 }}
+                className="mt-8"
+              >
                 <div className="flex items-center gap-6 mb-8">
                   <div className="w-32 h-32 rounded-full overflow-hidden bg-[#282828] shadow-[0_8px_24px_rgba(0,0,0,0.5)]">
                     <img
@@ -4135,11 +4185,18 @@ export default function MelodyStreamDashboard({
                     </div>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             )}
 
             {activeTab === "profile" && (
-              <div className="mt-8">
+              <motion.div
+                key="tab-profile"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.25 }}
+                className="mt-8"
+              >
                 <div className="flex items-end gap-6 mb-8 mt-12 group relative">
                   <div
                     className="w-48 h-48 rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.5)] bg-[#282828] flex items-center justify-center flex-shrink-0 overflow-hidden relative group cursor-pointer"
@@ -4265,11 +4322,18 @@ export default function MelodyStreamDashboard({
                     </div>
                   )}
                 </div>
-              </div>
+              </motion.div>
             )}
 
             {activeTab === "library" && (
-              <div className={`mt-8 ${isMobileView ? "block" : "hidden"}`}>
+              <motion.div
+                key="tab-library"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.25 }}
+                className={`mt-8 ${isMobileView ? "block" : "hidden"}`}
+              >
                 <div className="flex justify-between items-center mb-6 mt-6">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full overflow-hidden bg-[#282828]">
@@ -4382,11 +4446,18 @@ export default function MelodyStreamDashboard({
                     </div>
                   ))}
                 </div>
-              </div>
+              </motion.div>
             )}
 
             {activeTab === "queue" && (
-              <div className="mt-8">
+              <motion.div
+                key="tab-queue"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.25 }}
+                className="mt-8"
+              >
                 <h2 className="text-2xl font-bold text-white mb-6">Queue</h2>
                 <div className="mb-8">
                   <h3 className="text-lg font-bold text-white mb-4">
@@ -4463,8 +4534,9 @@ export default function MelodyStreamDashboard({
                     </div>
                   </div>
                 )}
-              </div>
+              </motion.div>
             )}
+            </AnimatePresence>
           </div>
         </div>
       </div>
