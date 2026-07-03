@@ -1,4 +1,4 @@
-const CACHE_NAME = 'melodystream-pwa-v2';
+const CACHE_NAME = 'melodystream-pwa-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
