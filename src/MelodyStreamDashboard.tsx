@@ -68,7 +68,6 @@ import { LyricsDisplay } from "./components/LyricsDisplay";
 import { ClickableArtists } from "./components/ClickableArtists";
 
 // MelodyStream Premium Modular Components
-import { AudioPipeline } from "./components/AudioPipeline";
 import { WaveformProgress } from "./components/WaveformProgress";
 import { OnboardingTaste } from "./components/OnboardingTaste";
 import { LocalisationSelector, LanguageCode, TRANSLATIONS } from "./components/LocalisationSelector";
@@ -6585,13 +6584,7 @@ export default function MelodyStreamDashboard({
         </div>
       )}
 
-      {/* MelodyStream Premium Background Audio Engine Pipeline */}
-      <AudioPipeline
-        primaryAudio={audioRef.current}
-        nextTrackUrl={null}
-        gaplessEnabled={featureFlags.gapless}
-        normalizationEnabled={featureFlags.normalization}
-      />
+
 
       {/* Interactive AI DJ Commentary Broadcast Bar Overlay */}
       {djCommentaryText && (
