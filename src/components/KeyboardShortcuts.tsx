@@ -130,15 +130,6 @@ export function KeyboardShortcuts({
 
   return (
     <>
-      {/* Small subtle activator button on desktop/side rail */}
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-24 right-6 z-[100] p-2.5 rounded-full bg-[#121212]/80 hover:bg-[#282828] text-[#b3b3b3] hover:text-white border border-[#282828] cursor-pointer shadow-lg hidden md:flex items-center justify-center transition-all hover:scale-105 active:scale-95"
-        title="Keyboard Shortcuts (?)"
-      >
-        <Keyboard className="w-5 h-5" />
-      </button>
-
       <AnimatePresence>
         {isOpen && (
           <div className="fixed inset-0 bg-black/70 z-[500] backdrop-blur-md flex items-center justify-center p-4">
