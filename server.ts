@@ -210,26 +210,18 @@ app.get("/api/stream/:videoId", async (req, res) => {
 
   // 2. Dynamic high-quality stable fallback instead of static Western songs
   try {
-    const response = await fetch(`https://itunes.apple.com/search?term=bollywood%20hits&entity=song&limit=10`);
+    const response = await fetch(`https://itunes.apple.com/search?term=pop%20hits&entity=song&limit=10`);
     const data: any = await response.json();
     if (data && data.results && data.results.length > 0) {
       const match = data.results.find((r: any) => r.previewUrl);
       if (match && match.previewUrl) {
-        console.log(`[Stream Proxy] No match found for "${title}". Bypassing ytdl bot checks with highly stable dynamic Bollywood fallback:`, match.previewUrl);
+        console.log(`[Stream Proxy] No match found for "${title}". Bypassing ytdl bot checks with highly stable dynamic Pop fallback:`, match.previewUrl);
         return res.redirect(match.previewUrl);
       }
     }
   } catch (e) {}
 
-  const fallbackUrls = [
-    "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/de/c3/e8/dec3e884-7237-9622-718a-12c5f48c5ca2/mzaf_3134455671785145822.plus.aac.p.m4a",
-    "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/f9/b1/aa/f9b1aaed-3e24-227f-153d-99969f8b8464/mzaf_6272498007975402144.plus.aac.p.m4a",
-    "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/82/d2/9a/82d29a5f-d9a0-57f4-c0ec-f785969240c3/mzaf_5320660780349800682.plus.aac.p.m4a"
-  ];
-  
-  const randomFallback = fallbackUrls[Math.floor(Math.random() * fallbackUrls.length)];
-  console.log(`[Stream Proxy] No iTunes match found for title "${title}". Bypassing ytdl bot checks with highly stable fallback stream:`, randomFallback);
-  return res.redirect(randomFallback);
+  return res.status(404).send("Audio stream not found");
 });
 
 // Provide Preview Data API
@@ -287,98 +279,44 @@ app.get("/api/tracks", async (req, res) => {
       });
 
       if (uniqueTracks.length > 0) {
-        res.json(uniqueTracks);
-        return;
+        return res.json(uniqueTracks);
       }
     }
   } catch (itunesErr) {
     // Fail silently
   }
 
-  // Tertiary rock-solid static fallback from pre-fetched top songs (rich mix of popular Western and Indian tracks)
-  const hardcodedFallback = [
-    {
-      id: "track-101",
-      title: "WILDFLOWER",
-      artist: "Billie Eilish",
-      album: "HIT ME HARD AND SOFT",
-      duration: "04:21",
-      audioUrl: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/de/c3/e8/dec3e884-7237-9622-718a-12c5f48c5ca2/mzaf_3134455671785145822.plus.aac.p.m4a",
-      coverUrl: "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/92/9f/69/929f69f1-9977-3a44-d674-11f70c852d1b/24UMGIM36186.rgb.jpg/300x300bb.jpg",
-      uri: "itunes:track:101"
-    },
-    {
-      id: "track-102",
-      title: "Circles",
-      artist: "Post Malone",
-      album: "Hollywood's Bleeding",
-      duration: "03:35",
-      audioUrl: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/f9/b1/aa/f9b1aaed-3e24-227f-153d-99969f8b8464/mzaf_6272498007975402144.plus.aac.p.m4a",
-      coverUrl: "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/7b/1b/1b/7b1b1b0b-7ce2-b223-f9e0-8e36abe51877/19UMGIM78325.rgb.jpg/300x300bb.jpg",
-      uri: "itunes:track:102"
-    },
-    {
-      id: "track-103",
-      title: "When I Was Your Man",
-      artist: "Bruno Mars",
-      album: "Unorthodox Jukebox",
-      duration: "03:34",
-      audioUrl: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/82/d2/9a/82d29a5f-d9a0-57f4-c0ec-f785969240c3/mzaf_5320660780349800682.plus.aac.p.m4a",
-      coverUrl: "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/e0/a4/7c/e0a47c6f-005a-9f9f-ce29-8e858e2bcfcb/075679957283.jpg/300x300bb.jpg",
-      uri: "itunes:track:103"
-    },
-    {
-      id: "track-104",
-      title: "Thinkin Bout You",
-      artist: "Frank Ocean",
-      album: "channel ORANGE",
-      duration: "03:21",
-      audioUrl: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview126/v4/8a/2c/35/8a2c35f6-ac70-560c-0a1c-516e105c6af8/mzaf_13522699475931524613.plus.aac.p.m4a",
-      coverUrl: "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/04/f8/63/04f863fc-2852-604f-c910-a97ac069506b/12UMGIM40339.rgb.jpg/300x300bb.jpg",
-      uri: "itunes:track:104"
-    },
-    {
-      id: "track-105",
-      title: "Viva La Vida",
-      artist: "Coldplay",
-      album: "Viva La Vida or Death and All His Friends",
-      duration: "04:01",
-      audioUrl: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview116/v4/2b/04/65/2b0465c3-2db1-e461-2362-14b528456b8f/mzaf_1805426141027060154.plus.aac.p.m4a",
-      coverUrl: "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/52/aa/85/52aa851f-15b7-6322-f91f-df84b15b7b19/190295978044.jpg/300x300bb.jpg",
-      uri: "itunes:track:105"
-    },
-    {
-      id: "track-106",
-      title: "O Maahi",
-      artist: "Pritam & Arijit Singh",
-      album: "Dunki",
-      duration: "03:53",
-      audioUrl: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview126/v4/1f/26/66/1f2666d4-cb23-281b-53c2-d3b20755581e/mzaf_12920268502575218765.plus.aac.p.m4a",
-      coverUrl: "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/fa/69/0d/fa690db2-1e9d-c50d-d4d1-0f7962cf9b1a/8903431940954_cover.jpg/300x300bb.jpg",
-      uri: "itunes:track:106"
-    },
-    {
-      id: "track-107",
-      title: "Chaleya",
-      artist: "Anirudh Ravichander, Arijit Singh & Shilpa Rao",
-      album: "Jawan",
-      duration: "03:20",
-      audioUrl: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview126/v4/b8/9f/fa/b89ffab2-5a21-7f8a-40a1-2d7c0f135b91/mzaf_14959141052062590632.plus.aac.p.m4a",
-      coverUrl: "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/10/7b/25/107b2586-fa83-f39b-e2fb-a76472093845/8903431908480_cover.jpg/300x300bb.jpg",
-      uri: "itunes:track:107"
-    },
-    {
-      id: "track-108",
-      title: "Kesariya",
-      artist: "Pritam, Arijit Singh & Amitabh Bhattacharya",
-      album: "Brahmastra",
-      duration: "04:28",
-      audioUrl: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview122/v4/28/73/ca/2873ca2a-43cf-e836-81cf-619f7cc8c36b/mzaf_4021201550505105949.plus.aac.p.m4a",
-      coverUrl: "https://is1-ssl.mzstatic.com/image/thumb/Music112/v4/2c/08/9b/2c089b25-b461-9c3a-9694-877f0d0571d7/8903431835700_cover.jpg/300x300bb.jpg",
-      uri: "itunes:track:108"
+  // If the multi-genre fetch fails or has no tracks, we dynamically fetch generic top hit songs live from iTunes
+  try {
+    const fallbackResponse = await fetch(`https://itunes.apple.com/search?term=pop&entity=song&limit=30`);
+    const data: any = await fallbackResponse.json();
+    if (data && data.results) {
+      const formatted = data.results.filter((s: any) => s.previewUrl).map((song: any, i: number) => {
+        const durMatch = song.trackTimeMillis;
+        let durStr = "03:30";
+        if (durMatch && typeof durMatch === 'number') {
+          const m = Math.floor(durMatch / 60000);
+          const s = Math.floor((durMatch % 60000) / 1000);
+          durStr = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+        return {
+          id: `track-${song.trackId || i}`,
+          title: song.trackName || 'Song Hit',
+          artist: song.artistName || 'Various Artists',
+          album: song.collectionName || 'Album Hits',
+          duration: durStr,
+          audioUrl: song.previewUrl || '',
+          coverUrl: song.artworkUrl100?.replace('100x100', '300x300') || 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=300',
+          uri: `itunes:track:${song.trackId || i}`
+        };
+      });
+      return res.json(formatted);
     }
-  ];
-  res.json(hardcodedFallback);
+  } catch (err) {
+    // Ignore and fallback to empty array
+  }
+
+  return res.json([]);
 });
 
 app.get("/api/auth/url", (req, res) => {

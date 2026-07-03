@@ -379,6 +379,7 @@ export default function MelodyStreamDashboard({
   const [followedArtists, setFollowedArtists] = useState<string[]>([]);
 
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+  const [currentTrackId, setCurrentTrackId] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -842,9 +843,30 @@ export default function MelodyStreamDashboard({
   useEffect(() => {
     playPauseRef.current = {
       isPlaying,
-      currentTrack: queue[currentTrackIndex],
+      currentTrack: queue.find(t => t.id === currentTrackId) || queue[currentTrackIndex],
     };
-  }, [isPlaying, queue, currentTrackIndex]);
+  }, [isPlaying, queue, currentTrackIndex, currentTrackId]);
+
+  useEffect(() => {
+    if (queue.length > 0) {
+      const activeTrack = queue.find(t => t.id === currentTrackId);
+      if (!activeTrack) {
+        const trackAtIdx = queue[currentTrackIndex];
+        if (trackAtIdx) {
+          setCurrentTrackId(trackAtIdx.id);
+        }
+      } else {
+        const idxOfActive = queue.findIndex(t => t.id === currentTrackId);
+        if (idxOfActive >= 0 && idxOfActive !== currentTrackIndex) {
+          setCurrentTrackIndex(idxOfActive);
+        }
+      }
+    } else {
+      if (currentTrackId !== null) {
+        setCurrentTrackId(null);
+      }
+    }
+  }, [queue, currentTrackIndex, currentTrackId]);
 
   useEffect(() => {
     let interval: any;
@@ -1074,6 +1096,7 @@ export default function MelodyStreamDashboard({
 
   const stateRef = useRef({
     currentTrackIndex,
+    currentTrackId,
     isPlaying,
     queue,
     repeatMode,
@@ -1084,12 +1107,13 @@ export default function MelodyStreamDashboard({
   useEffect(() => {
     stateRef.current = {
       currentTrackIndex,
+      currentTrackId,
       isPlaying,
       queue,
       repeatMode,
       isShuffled,
     };
-  }, [currentTrackIndex, isPlaying, queue, repeatMode, isShuffled]);
+  }, [currentTrackIndex, currentTrackId, isPlaying, queue, repeatMode, isShuffled]);
 
   useEffect(() => {
     const closeMenu = () => setTrackMenuContext(null);
@@ -1478,7 +1502,7 @@ export default function MelodyStreamDashboard({
     }
   }, [searchQuery, activeTab, accessToken, tracks]);
 
-  const currentTrack = queue[currentTrackIndex];
+  const currentTrack = queue.find((t) => t.id === currentTrackId) || queue[currentTrackIndex];
 
   useEffect(() => {
     if (!currentTrack) {
@@ -1557,6 +1581,7 @@ export default function MelodyStreamDashboard({
     const {
       queue: currentTracks,
       currentTrackIndex: currentIndex,
+      currentTrackId: activeId,
       isPlaying: currentPlaying,
       repeatMode: currentRepeat,
     } = stateRef.current;
@@ -1574,7 +1599,16 @@ export default function MelodyStreamDashboard({
       return;
     }
 
-    let nextIndex = currentIndex + 1;
+    // Find current index by currentTrackId as the single source of truth!
+    let indexToUse = currentIndex;
+    if (activeId) {
+      const foundIdx = currentTracks.findIndex((t) => t.id === activeId);
+      if (foundIdx >= 0) {
+        indexToUse = foundIdx;
+      }
+    }
+
+    let nextIndex = indexToUse + 1;
     if (nextIndex >= currentTracks.length) {
       if (currentRepeat === "all") {
         nextIndex = 0;
@@ -1582,14 +1616,22 @@ export default function MelodyStreamDashboard({
         setIsPlaying(false);
         setProgress(0);
         if (!isAutoEvent) {
-          setCurrentTrackIndex(0);
+          const firstTrack = currentTracks[0];
+          if (firstTrack) {
+            setCurrentTrackId(firstTrack.id);
+            setCurrentTrackIndex(0);
+          }
         }
         return;
       }
     }
 
-    setCurrentTrackIndex(nextIndex);
-    playMusic(nextIndex);
+    const nextTrack = currentTracks[nextIndex];
+    if (nextTrack) {
+      setCurrentTrackId(nextTrack.id);
+      setCurrentTrackIndex(nextIndex);
+      playMusic(nextTrack.id);
+    }
   };
 
   const handlePrev = async () => {
@@ -1614,13 +1656,27 @@ export default function MelodyStreamDashboard({
       }
       return;
     }
-    const { queue: currentTracks, currentTrackIndex: currentIndex } =
+    const { queue: currentTracks, currentTrackIndex: currentIndex, currentTrackId: activeId } =
       stateRef.current;
     if (currentTracks.length === 0) return;
+
+    // Find current index by currentTrackId as single source of truth
+    let indexToUse = currentIndex;
+    if (activeId) {
+      const foundIdx = currentTracks.findIndex((t) => t.id === activeId);
+      if (foundIdx >= 0) {
+        indexToUse = foundIdx;
+      }
+    }
+
     const prevIndex =
-      (currentIndex - 1 + currentTracks.length) % currentTracks.length;
-    setCurrentTrackIndex(prevIndex);
-    playMusic(prevIndex);
+      (indexToUse - 1 + currentTracks.length) % currentTracks.length;
+    const prevTrack = currentTracks[prevIndex];
+    if (prevTrack) {
+      setCurrentTrackId(prevTrack.id);
+      setCurrentTrackIndex(prevIndex);
+      playMusic(prevTrack.id);
+    }
   };
 
   const addToPlaylist = async (track: Track) => {
@@ -1843,17 +1899,43 @@ export default function MelodyStreamDashboard({
     });
   };
 
-  const playMusic = async (index?: number, targetQueue?: Track[]) => {
+  const playMusic = async (trackIdOrIndex?: string | number, targetQueue?: Track[]) => {
     const playRequestId = Date.now();
     playRequestIdRef.current = playRequestId;
 
     const targetTracks = targetQueue || stateRef.current.queue;
     if (targetTracks.length === 0) return;
-    const targetIndex =
-      index !== undefined ? index : stateRef.current.currentTrackIndex;
-    let trackTarget = targetTracks[targetIndex];
+
+    let trackTarget: Track | undefined;
+    let targetIndex = -1;
+
+    if (trackIdOrIndex !== undefined) {
+      if (typeof trackIdOrIndex === "string") {
+        trackTarget = targetTracks.find((t) => t.id === trackIdOrIndex);
+        targetIndex = targetTracks.findIndex((t) => t.id === trackIdOrIndex);
+      } else {
+        targetIndex = trackIdOrIndex;
+        trackTarget = targetTracks[targetIndex];
+      }
+    } else {
+      const { currentTrackId, currentTrackIndex } = stateRef.current;
+      if (currentTrackId) {
+        trackTarget = targetTracks.find((t) => t.id === currentTrackId);
+        targetIndex = targetTracks.findIndex((t) => t.id === currentTrackId);
+      }
+      if (!trackTarget) {
+        targetIndex = currentTrackIndex;
+        trackTarget = targetTracks[targetIndex];
+      }
+    }
 
     if (!trackTarget) return;
+
+    // Update ID and index state dynamically
+    setCurrentTrackId(trackTarget.id);
+    if (targetIndex >= 0) {
+      setCurrentTrackIndex(targetIndex);
+    }
 
     let finalAudioUrl = trackTarget.audioUrl;
     let isAlreadyYT = trackTarget.uri?.startsWith("yt:track:");
@@ -1866,6 +1948,7 @@ export default function MelodyStreamDashboard({
       audioRef.current.pause();
     }
 
+    // Check if the track's audio URL is a direct, playable HTTP/HTTPS link
     let isDirectPlayable = false;
     if (
       finalAudioUrl &&
@@ -1873,10 +1956,6 @@ export default function MelodyStreamDashboard({
       !finalAudioUrl.includes("/api/stream/")
     ) {
       const lowerUrl = finalAudioUrl.toLowerCase();
-      const isAppleCDN =
-        lowerUrl.includes("apple.com") ||
-        lowerUrl.includes(".mzstatic.com") ||
-        lowerUrl.includes("itunes.apple.com");
       const isMockOrDummy =
         lowerUrl.includes("mock") ||
         lowerUrl.includes("dummy") ||
@@ -1884,7 +1963,7 @@ export default function MelodyStreamDashboard({
         lowerUrl.includes("placeholder") ||
         lowerUrl.includes("test");
 
-      if (isAppleCDN && !isMockOrDummy) {
+      if (!isMockOrDummy) {
         isDirectPlayable = true;
       }
     }
@@ -1908,16 +1987,34 @@ export default function MelodyStreamDashboard({
         const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
         const data = await res.json();
         if (data && data.length > 0) {
-          ytVidId = data[0].id;
+          // Verify that search query results match title-artist precisely to avoid incorrect mappings
+          const cleanStr = (s: string) => s ? s.toLowerCase().replace(/[^a-z0-9]/g, "") : "";
+          const targetTitleClean = cleanStr(trackTarget.title);
+          const targetArtistClean = cleanStr(trackTarget.artist);
+          
+          let matchedYT = data.find((r: any) => {
+            const rtClean = cleanStr(r.title);
+            const raClean = cleanStr(r.artist);
+            return (
+              (rtClean.includes(targetTitleClean) || targetTitleClean.includes(rtClean)) &&
+              (raClean.includes(targetArtistClean) || targetArtistClean.includes(raClean))
+            );
+          });
+          
+          if (!matchedYT) {
+            matchedYT = data[0]; // fallback to first result if no perfect match, but we prefer a matched one
+          }
+
+          ytVidId = matchedYT.id;
           trackTarget.uri = `yt:track:${ytVidId}`;
           trackTarget.audioUrl = `/api/stream/${ytVidId}?title=${encodeURIComponent(trackTarget.title)}&artist=${encodeURIComponent(trackTarget.artist)}`;
-          finalAudioUrl = `/api/stream/${ytVidId}?title=${encodeURIComponent(trackTarget.title)}&artist=${encodeURIComponent(trackTarget.artist)}`;
+          finalAudioUrl = trackTarget.audioUrl;
           isAlreadyYT = true;
           if (
             trackTarget.coverUrl &&
             trackTarget.coverUrl.includes("unsplash")
           ) {
-            trackTarget.coverUrl = data[0].coverUrl;
+            trackTarget.coverUrl = matchedYT.coverUrl;
           }
         }
       } catch (err) {
@@ -2027,8 +2124,6 @@ export default function MelodyStreamDashboard({
 
     if (playRequestIdRef.current !== playRequestId) return;
 
-    // We force stream everything via the high-fidelity HTML5 audio proxy endpoint /api/stream/:id.
-    // This bypasses the YouTube iframe restrictions completely, making it play 100% reliably in all sandboxed frames!
     if (ytVidId) {
       finalAudioUrl = `/api/stream/${ytVidId}?title=${encodeURIComponent(trackTarget.title)}&artist=${encodeURIComponent(trackTarget.artist)}`;
       trackTarget.audioUrl = finalAudioUrl;
@@ -2053,7 +2148,6 @@ export default function MelodyStreamDashboard({
     }
 
     if (!finalAudioUrl || !audioRef.current) {
-      // silenced resolve warning
       setTimeout(() => handleNext(true), 1000);
       return;
     }
@@ -2287,10 +2381,10 @@ export default function MelodyStreamDashboard({
   const handleTrackSelect = (index: number, newQueueContext?: Track[]) => {
     let finalIndex = index;
     if (newQueueContext && newQueueContext !== queue) {
+      const selectedItem = newQueueContext[index];
       setOriginalQueue(newQueueContext);
       let actualQueue = newQueueContext;
       if (isShuffled) {
-        const selectedItem = newQueueContext[index];
         const rest = [
           ...newQueueContext.slice(0, index),
           ...newQueueContext.slice(index + 1),
@@ -2304,15 +2398,22 @@ export default function MelodyStreamDashboard({
       }
       setQueue(actualQueue);
       setCurrentTrackIndex(finalIndex);
-      playMusic(finalIndex, actualQueue);
+      if (selectedItem) {
+        setCurrentTrackId(selectedItem.id);
+        playMusic(selectedItem.id, actualQueue);
+      }
       return;
     }
 
-    if (currentTrackIndex === index) {
-      togglePlayPause();
-    } else {
-      setCurrentTrackIndex(index);
-      playMusic(index, queue);
+    const track = queue[index];
+    if (track) {
+      if (currentTrackId === track.id) {
+        togglePlayPause();
+      } else {
+        setCurrentTrackId(track.id);
+        setCurrentTrackIndex(index);
+        playMusic(track.id, queue);
+      }
     }
   };
 
