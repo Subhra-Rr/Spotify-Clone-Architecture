@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from "./MelodyStreamAuthContext";
 import MelodyStreamDashboard from "./MelodyStreamDashboard";
 import { Music, Download, BadgeCheck, ExternalLink, Loader2 } from "lucide-react";
 import { auth, googleProvider } from "./firebase";
+import ErrorBoundary from "./components/ErrorBoundary";
 import {
   signInWithPopup,
   signInWithRedirect,
@@ -525,8 +526,10 @@ export default function App() {
   }
 
   return (
-    <AuthProvider>
-      <MainLayout />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <MainLayout />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

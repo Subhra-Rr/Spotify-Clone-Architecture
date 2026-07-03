@@ -66,6 +66,16 @@ import { ProfilePhotoEditModal } from "./components/ProfilePhotoEditModal";
 import { LyricsDisplay } from "./components/LyricsDisplay";
 import { ClickableArtists } from "./components/ClickableArtists";
 
+import { BarChart3 } from "lucide-react";
+
+// MelodyStream Premium Feature Extensions
+import { KeyboardShortcuts } from "./components/KeyboardShortcuts";
+import { ThemeCustomizer } from "./components/ThemeCustomizer";
+import { TopLoadingBar, startLoadingBar, stopLoadingBar } from "./components/TopLoadingBar";
+import { SkeletonLoader } from "./components/SkeletonLoader";
+import { ListeningStats, recordPlayInHistory } from "./components/ListeningStats";
+import { getOfflineTracks, saveOfflineTrack, deleteOfflineTrack, isTrackDownloaded } from "./utils/offlineDB";
+
 enum OperationType {
   CREATE = "create",
   UPDATE = "update",
@@ -693,7 +703,15 @@ export default function MelodyStreamDashboard({
     | "premium"
     | "profile"
     | "library"
+    | "stats"
+    | "downloads"
   >("home");
+
+  // Premium State Extensions
+  const [sleepTimer, setSleepTimer] = useState<number | null>(null); // remaining seconds
+  const [offlineTracksList, setOfflineTracksList] = useState<Track[]>([]);
+  const [downloadingTrackIds, setDownloadingTrackIds] = useState<Record<string, boolean>>({});
+  const [downloadedTrackIds, setDownloadedTrackIds] = useState<Record<string, boolean>>({});
   const [homeCategory, setHomeCategory] = useState<
     "all" | "music" | "podcasts" | "audiobooks"
   >("all");
@@ -858,6 +876,126 @@ export default function MelodyStreamDashboard({
       window.removeEventListener("offline", handleOffline);
     };
   }, []);
+
+  // Sleep Timer Count Down Effect
+  useEffect(() => {
+    if (sleepTimer === null) return;
+    if (sleepTimer <= 0) {
+      setIsPlaying(false);
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      setSleepTimer(null);
+      showToast("Sleep timer complete! Playback paused.", "success");
+      return;
+    }
+    const interval = setInterval(() => {
+      setSleepTimer((prev) => (prev !== null ? prev - 1 : null));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [sleepTimer]);
+
+  // Initial Theme and Dynamic Styles loader
+  useEffect(() => {
+    try {
+      const accent = localStorage.getItem("theme-accent") || "#8b5cf6";
+      const bg = localStorage.getItem("theme-bg") || "black";
+      const glass = localStorage.getItem("theme-glass") !== "false";
+      
+      document.documentElement.style.setProperty("--color-accent", accent);
+      document.documentElement.style.setProperty("--theme-glass", String(glass));
+      
+      const ACCENT_COLORS = [
+        { hex: "#8b5cf6", hover: "#7c3aed" },
+        { hex: "#1db954", hover: "#1aa34a" },
+        { hex: "#06b6d4", hover: "#0891b2" },
+        { hex: "#f59e0b", hover: "#d97706" },
+        { hex: "#ec4899", hover: "#db2777" },
+        { hex: "#3b82f6", hover: "#2563eb" },
+      ];
+      const foundColor = ACCENT_COLORS.find(c => c.hex === accent);
+      if (foundColor) {
+        document.documentElement.style.setProperty("--color-accent-hover", foundColor.hover);
+      }
+    } catch (e) {}
+  }, []);
+
+  // Sync Offline Tracks from IndexedDB on boot & tab load
+  const syncOfflineTracks = async () => {
+    try {
+      const tracks = await getOfflineTracks();
+      setOfflineTracksList(tracks);
+      
+      const ids: Record<string, boolean> = {};
+      tracks.forEach(t => {
+        ids[t.id] = true;
+      });
+      setDownloadedTrackIds(ids);
+    } catch (e) {
+      console.warn("Could not sync offline tracks:", e);
+    }
+  };
+
+  useEffect(() => {
+    syncOfflineTracks();
+  }, [activeTab]);
+
+  // Premium Download Track Handler
+  const downloadTrack = async (track: Track) => {
+    if (downloadingTrackIds[track.id]) return;
+    
+    // Safety check: skip downloads if there's no valid streamable url
+    if (!track.audioUrl && (!track.uri || !track.uri.startsWith("yt:track:"))) {
+      showToast("This track format cannot be downloaded for offline use.", "error");
+      return;
+    }
+
+    setDownloadingTrackIds(prev => ({ ...prev, [track.id]: true }));
+    startLoadingBar();
+    showToast(`Starting offline cache for "${track.title}"...`, "info");
+
+    try {
+      // If we don't have a direct URL, map it to the stream API endpoint
+      let downloadUrl = track.audioUrl;
+      if (!downloadUrl && track.uri && track.uri.startsWith("yt:track:")) {
+        const ytVidId = track.uri.replace("yt:track:", "");
+        downloadUrl = `/api/stream/${ytVidId}?title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(track.artist)}`;
+      }
+
+      if (!downloadUrl) {
+        throw new Error("No streamable track URL mapped.");
+      }
+
+      await saveOfflineTrack({
+        id: track.id,
+        title: track.title,
+        artist: track.artist,
+        album: track.album || "Single",
+        audioUrl: downloadUrl,
+        coverUrl: track.coverUrl,
+        duration: track.duration
+      });
+
+      showToast(`"${track.title}" downloaded and cached successfully!`, "success");
+      syncOfflineTracks();
+    } catch (err: any) {
+      showToast(`Download failed: ${err.message || "Network Timeout"}`, "error");
+    } finally {
+      setDownloadingTrackIds(prev => ({ ...prev, [track.id]: false }));
+      stopLoadingBar();
+    }
+  };
+
+  // Premium Remove Download Handler
+  const removeDownloadedTrack = async (id: string, title: string) => {
+    try {
+      await deleteOfflineTrack(id);
+      showToast(`Removed "${title}" from offline downloads.`, "info");
+      syncOfflineTracks();
+    } catch (e) {
+      showToast("Failed to remove downloaded track.", "error");
+    }
+  };
 
   useEffect(() => {
     try {
@@ -1932,7 +2070,10 @@ export default function MelodyStreamDashboard({
       const p = audioRef.current.play();
       if (p !== undefined) {
         p.then(() => {
-          if (playRequestIdRef.current === playRequestId) setIsPlaying(true);
+          if (playRequestIdRef.current === playRequestId) {
+            setIsPlaying(true);
+            recordPlayInHistory(trackTarget);
+          }
         }).catch((err: any) => {
           if (err.name !== "AbortError") {
             // silenced playback state notice
@@ -1940,6 +2081,7 @@ export default function MelodyStreamDashboard({
         });
       } else {
         setIsPlaying(true);
+        recordPlayInHistory(trackTarget);
       }
     } catch (err: any) {
       if (err.name !== "AbortError") {
@@ -2244,8 +2386,44 @@ export default function MelodyStreamDashboard({
 
   return (
     <div
-      className={`flex flex-col h-screen bg-black text-white font-sans overflow-hidden select-none relative ${isMobileView ? "pb-[calc(140px+env(safe-area-inset-bottom,0px))]" : "pb-[90px]"}`}
+      className={`flex flex-col h-screen text-white font-sans overflow-hidden select-none relative ${isMobileView ? "pb-[calc(140px+env(safe-area-inset-bottom,0px))]" : "pb-[90px]"}`}
+      style={{ background: 'linear-gradient(135deg, var(--theme-bg-from, #000000), var(--theme-bg-to, #000000))' }}
     >
+      <TopLoadingBar />
+      <KeyboardShortcuts
+        onTogglePlay={togglePlayPause}
+        onNext={() => handleNext(false)}
+        onPrev={handlePrev}
+        onSeekForward={() => {
+          const nextVal = Math.min((audioRef.current?.currentTime || 0) + 10, duration);
+          if (audioRef.current) audioRef.current.currentTime = nextVal;
+          setProgress(nextVal);
+        }}
+        onSeekBackward={() => {
+          const prevVal = Math.max((audioRef.current?.currentTime || 0) - 10, 0);
+          if (audioRef.current) audioRef.current.currentTime = prevVal;
+          setProgress(prevVal);
+        }}
+        onVolumeUp={() => {
+          const nextVol = Math.min(volume + 0.1, 1);
+          setVolume(nextVol);
+          if (audioRef.current) audioRef.current.volume = nextVol;
+        }}
+        onVolumeDown={() => {
+          const prevVol = Math.max(volume - 0.1, 0);
+          setVolume(prevVol);
+          if (audioRef.current) audioRef.current.volume = prevVol;
+        }}
+        onToggleMute={() => {
+          const isMuted = volume === 0;
+          const newVol = isMuted ? 0.8 : 0;
+          setVolume(newVol);
+          if (audioRef.current) audioRef.current.volume = newVol;
+        }}
+        onToggleShuffle={toggleShuffle}
+        onToggleRepeat={toggleRepeat}
+      />
+
       {isOffline && (
         <div className="absolute top-0 left-0 right-0 z-50 bg-[#e22134] text-white flex justify-center items-center py-2 text-sm font-bold shadow-lg">
           <WifiOff className="w-5 h-5 mr-2" /> You are currently offline. Some
@@ -2271,6 +2449,18 @@ export default function MelodyStreamDashboard({
               className={`flex items-center gap-4 transition-colors font-bold text-[15px] ${activeTab === "search" ? "text-white" : "text-[#b3b3b3] hover:text-white"}`}
             >
               <Search className="w-6 h-6" /> Search
+            </button>
+            <button
+              onClick={() => navigateTo("stats")}
+              className={`flex items-center gap-4 transition-colors font-bold text-[15px] ${activeTab === "stats" ? "text-white" : "text-[#b3b3b3] hover:text-white"}`}
+            >
+              <BarChart3 className="w-6 h-6" /> Listening Stats
+            </button>
+            <button
+              onClick={() => navigateTo("downloads")}
+              className={`flex items-center gap-4 transition-colors font-bold text-[15px] ${activeTab === "downloads" ? "text-white" : "text-[#b3b3b3] hover:text-white"}`}
+            >
+              <Download className="w-6 h-6" /> Offline Downloads
             </button>
           </div>
 
@@ -2742,6 +2932,27 @@ export default function MelodyStreamDashboard({
                           <div className="flex-1 px-4 truncate font-bold text-white text-[15px] z-10">
                             {track.title}
                           </div>
+
+                          <button
+                            className={`absolute right-32 sm:right-36 text-white w-8 h-8 rounded-full flex items-center justify-center transition-all transform z-20 hover:scale-105 hover:bg-black/30 opacity-0 group-hover:opacity-100`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (downloadedTrackIds[track.id]) {
+                                removeDownloadedTrack(track.id, track.title);
+                              } else {
+                                downloadTrack(track);
+                              }
+                            }}
+                            title={downloadedTrackIds[track.id] ? "Downloaded (Click to delete)" : downloadingTrackIds[track.id] ? "Downloading..." : "Download for Offline Listening"}
+                          >
+                            {downloadingTrackIds[track.id] ? (
+                              <Loader2 className="w-4.5 h-4.5 animate-spin text-[#a78bfa]" />
+                            ) : downloadedTrackIds[track.id] ? (
+                              <BadgeCheck className="w-5 h-5 text-[#1db954]" />
+                            ) : (
+                              <Download className="w-5 h-5" />
+                            )}
+                          </button>
 
                           <button
                             className={`absolute right-24 sm:right-28 text-white w-8 h-8 rounded-full flex items-center justify-center transition-all transform z-20 hover:scale-105 hover:bg-black/30 opacity-0 group-hover:opacity-100`}
@@ -4536,6 +4747,100 @@ export default function MelodyStreamDashboard({
                 )}
               </motion.div>
             )}
+
+            {activeTab === "stats" && (
+              <motion.div
+                key="tab-stats"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.25 }}
+                className="mt-8"
+              >
+                <ListeningStats
+                  onPlayTrack={(track) => {
+                    setQueue([track]);
+                    setCurrentTrackIndex(0);
+                    playMusic(0, [track]);
+                  }}
+                />
+              </motion.div>
+            )}
+
+            {activeTab === "downloads" && (
+              <motion.div
+                key="tab-downloads"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.25 }}
+                className="mt-8"
+              >
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#282828] pb-6 mb-6">
+                  <div>
+                    <h2 className="text-3xl font-extrabold tracking-tight">Offline Downloads</h2>
+                    <p className="text-[#b3b3b3] text-sm mt-1">Listen to your cached music with zero internet connection</p>
+                  </div>
+                  <div className="bg-[#1db954]/10 text-[#1db954] border border-[#1db954]/20 px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 animate-pulse">
+                    <span className="w-2 h-2 rounded-full bg-[#1db954]" /> Offline Mode Ready
+                  </div>
+                </div>
+
+                {offlineTracksList.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-24 text-center space-y-4">
+                    <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center text-gray-400">
+                      <Download className="w-8 h-8 animate-bounce" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-white">No downloaded songs yet</h3>
+                      <p className="text-gray-400 text-xs max-w-xs mx-auto mt-1 leading-relaxed">
+                        Navigate to Home or Search, hover on a track, and click the Download icon to store it forever!
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {offlineTracksList.map((track, idx) => (
+                      <div
+                        key={track.id}
+                        className="flex items-center justify-between p-3 rounded-xl bg-white/[0.01] hover:bg-white/[0.03] transition-all border border-white/[0.02] group"
+                      >
+                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                          <span className="w-5 text-sm font-bold text-gray-500 text-center">{idx + 1}</span>
+                          <div className="w-11 h-11 rounded-lg overflow-hidden shrink-0 relative bg-[#282828]">
+                            <img src={track.coverUrl} alt={track.title} className="w-full h-full object-cover" />
+                            <button
+                              onClick={() => {
+                                setQueue(offlineTracksList);
+                                setCurrentTrackIndex(idx);
+                                playMusic(idx, offlineTracksList);
+                              }}
+                              className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                            >
+                              <Play className="w-4 h-4 text-white fill-current" />
+                            </button>
+                          </div>
+                          <div className="truncate min-w-0 flex-1">
+                            <h4 className="text-sm font-bold text-white truncate group-hover:text-[var(--color-accent,#8b5cf6)] transition-colors">{track.title}</h4>
+                            <p className="text-xs text-gray-400 truncate">{track.artist}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-4 shrink-0 ml-4">
+                          <span className="text-xs text-gray-500 hidden sm:block">{track.duration || "2:50"}</span>
+                          <button
+                            onClick={() => removeDownloadedTrack(track.id, track.title)}
+                            className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-xs font-bold transition-all cursor-pointer border border-red-500/5 hover:scale-105"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            )}
             </AnimatePresence>
           </div>
         </div>
@@ -5767,7 +6072,7 @@ export default function MelodyStreamDashboard({
           id="advanced-settings-modal"
           className="fixed inset-0 bg-black/80 z-[200] flex items-center justify-center p-4 backdrop-blur-sm"
         >
-          <div className="bg-[#181818] rounded-lg w-full max-w-lg p-6 border border-[#282828] shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative animate-fade-in text-white font-sans">
+          <div className="bg-[#181818] rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto custom-scrollbar p-6 border border-[#282828] shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative animate-fade-in text-white font-sans">
             <button
               id="close-settings-modal-btn"
               onClick={() => setIsSettingsModalOpen(false)}
@@ -5871,6 +6176,17 @@ export default function MelodyStreamDashboard({
                 >
                   Clear History
                 </button>
+              </div>
+
+              <div className="pt-6 border-t border-[#282828] mt-6">
+                <h4 className="text-sm font-black text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">
+                  🎨 Theme Accent, Background & Sleep Timer
+                </h4>
+                <ThemeCustomizer
+                  onSleepTimerSet={(min) => setSleepTimer(min ? min * 60 : null)}
+                  activeSleepTimer={sleepTimer}
+                  showToast={showToast}
+                />
               </div>
             </div>
 
