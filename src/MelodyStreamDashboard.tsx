@@ -33,6 +33,7 @@ import {
   Download,
   Laptop,
   Smartphone,
+  Cast,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import YouTube from "react-youtube";
@@ -65,6 +66,15 @@ import { useAudioDB } from "./hooks/useAudioDB";
 import { ProfilePhotoEditModal } from "./components/ProfilePhotoEditModal";
 import { LyricsDisplay } from "./components/LyricsDisplay";
 import { ClickableArtists } from "./components/ClickableArtists";
+
+// MelodyStream Premium Modular Components
+import { AudioPipeline } from "./components/AudioPipeline";
+import { WaveformProgress } from "./components/WaveformProgress";
+import { OnboardingTaste } from "./components/OnboardingTaste";
+import { LocalisationSelector, LanguageCode, TRANSLATIONS } from "./components/LocalisationSelector";
+import { CastingSimulator } from "./components/CastingSimulator";
+import { DataManagement } from "./components/DataManagement";
+import { AdminPanel } from "./components/AdminPanel";
 
 import { BarChart3 } from "lucide-react";
 
@@ -736,6 +746,39 @@ export default function MelodyStreamDashboard({
   const [artistTopTracks, setArtistTopTracks] = useState<Track[]>([]);
   const [artistAlbums, setArtistAlbums] = useState<Album[]>([]);
   const [isFetchingArtist, setIsFetchingArtist] = useState(false);
+
+  // MelodyStream Premium - Final Layer State Variables
+  const [featureFlags, setFeatureFlags] = useState({
+    gapless: true,
+    normalization: true,
+    aiDJ: false,
+    hdAudio: false,
+  });
+  const [currentLanguage, setCurrentLanguage] = useState<LanguageCode>("en");
+  const [activeCastingDevice, setActiveCastingDevice] = useState<string | null>(null);
+  const [activeCastingDeviceName, setActiveCastingDeviceName] = useState<string | null>(null);
+  const [isCastingModalOpen, setIsCastingModalOpen] = useState(false);
+  const [isDataManagementModalOpen, setIsDataManagementModalOpen] = useState(false);
+  const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
+  const [showOnboardingTaste, setShowOnboardingTaste] = useState(false);
+  const [aiSearchQuery, setAiSearchQuery] = useState("");
+  const [isAiSearching, setIsAiSearching] = useState(false);
+  const [aiSearchResults, setAiSearchResults] = useState<Track[]>([]);
+  const [isAiSearchActive, setIsAiSearchActive] = useState(false);
+  const [djCommentaryText, setDjCommentaryText] = useState<string | null>(null);
+  const [isDjCommentaryPlaying, setIsDjCommentaryPlaying] = useState(false);
+
+  // Initialize Language, Onboarding status, and load preferences on boot
+  useEffect(() => {
+    const savedLang = localStorage.getItem("melodystream_lang") as LanguageCode;
+    if (savedLang) {
+      setCurrentLanguage(savedLang);
+    }
+    const hasTaste = localStorage.getItem("melodystream_taste_captured") === "true";
+    if (!hasTaste) {
+      setShowOnboardingTaste(true);
+    }
+  }, []);
 
   const [pageHistory, setPageHistory] = useState<
     { tab: string; artist: string | null }[]
@@ -1465,10 +1508,23 @@ export default function MelodyStreamDashboard({
       const debounceTimer = setTimeout(() => {
         setIsSearching(true);
 
-        fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`)
+        const useAiSearch = isAiSearchActive || searchQuery.toLowerCase().startsWith("ai:");
+        const cleanQuery = searchQuery.replace(/^ai:\s*/i, "");
+
+        const endpoint = useAiSearch ? "/api/ai/search" : `/api/search?q=${encodeURIComponent(searchQuery)}`;
+        const fetchPromise = useAiSearch
+          ? fetch(endpoint, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ query: cleanQuery }),
+            })
+          : fetch(endpoint);
+
+        fetchPromise
           .then(async (res) => {
             if (!res.ok) throw new Error("Search failed");
-            return res.json();
+            const rawData = await res.json();
+            return useAiSearch ? (rawData.tracks || []) : rawData;
           })
           .then(async (data) => {
             if (data && data.length > 0) {
@@ -1630,6 +1686,65 @@ export default function MelodyStreamDashboard({
     if (nextTrack) {
       setCurrentTrackId(nextTrack.id);
       setCurrentTrackIndex(nextIndex);
+      const currentTrack = currentTracks[indexToUse];
+      if (currentTrack && featureFlags.aiDJ) {
+        playNextWithAiDj(currentTrack, nextTrack);
+      } else {
+        playMusic(nextTrack.id);
+      }
+    }
+  };
+
+  const playNextWithAiDj = async (currentTrack: Track, nextTrack: Track) => {
+    setIsDjCommentaryPlaying(true);
+    try {
+      const response = await fetch("/api/ai/dj", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentTrackTitle: currentTrack.title,
+          currentTrackArtist: currentTrack.artist,
+          nextTrackTitle: nextTrack.title,
+          nextTrackArtist: nextTrack.artist,
+          mood: "chill vibe",
+          timeOfDay: new Date().getHours() > 18 ? "night" : "daytime",
+        }),
+      });
+      const data = await response.json();
+      const commentary = data.djCommentary || `That was "${currentTrack.title}". Up next, we have "${nextTrack.title}"!`;
+      setDjCommentaryText(commentary);
+
+      // Synthesize using Web Speech API to speak the commentary in a smooth radio DJ voice!
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(commentary);
+        const voices = window.speechSynthesis.getVoices();
+        const enVoice = voices.find(v => v.lang.startsWith("en") && (v.name.includes("Natural") || v.name.includes("Google"))) || voices[0];
+        if (enVoice) utterance.voice = enVoice;
+        utterance.rate = 1.02;
+        
+        utterance.onend = () => {
+          setIsDjCommentaryPlaying(false);
+          setDjCommentaryText(null);
+          playMusic(nextTrack.id);
+        };
+        utterance.onerror = () => {
+          setIsDjCommentaryPlaying(false);
+          setDjCommentaryText(null);
+          playMusic(nextTrack.id);
+        };
+        window.speechSynthesis.speak(utterance);
+      } else {
+        setTimeout(() => {
+          setIsDjCommentaryPlaying(false);
+          setDjCommentaryText(null);
+          playMusic(nextTrack.id);
+        }, 3500);
+      }
+    } catch (err) {
+      console.error("AI DJ commentary failed:", err);
+      setIsDjCommentaryPlaying(false);
+      setDjCommentaryText(null);
       playMusic(nextTrack.id);
     }
   };
@@ -2543,13 +2658,13 @@ export default function MelodyStreamDashboard({
               onClick={() => navigateTo("home")}
               className={`flex items-center gap-4 transition-colors font-bold text-[15px] ${activeTab === "home" ? "text-white" : "text-[#b3b3b3] hover:text-white"}`}
             >
-              <Home className="w-6 h-6" /> Home
+              <Home className="w-6 h-6" /> {TRANSLATIONS[currentLanguage]?.home || "Home"}
             </button>
             <button
               onClick={() => navigateTo("search")}
               className={`flex items-center gap-4 transition-colors font-bold text-[15px] ${activeTab === "search" ? "text-white" : "text-[#b3b3b3] hover:text-white"}`}
             >
-              <Search className="w-6 h-6" /> Search
+              <Search className="w-6 h-6" /> {TRANSLATIONS[currentLanguage]?.search || "Search"}
             </button>
             <button
               onClick={() => navigateTo("stats")}
@@ -5064,34 +5179,16 @@ export default function MelodyStreamDashboard({
 
           <div className="flex items-center w-full gap-2 text-xs text-[#b3b3b3]">
             <span className="w-10 text-right">{formatTime(progress)}</span>
-            <div className="relative flex items-center w-full group h-4">
-              {/* Custom background & progress track */}
-              <div className="absolute left-0 right-0 h-1 bg-[#4d4d4d] rounded-full overflow-hidden pointer-events-none">
-                <div
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${duration ? (progress / duration) * 100 : 0}%`,
-                    backgroundColor: isProgressHovered ? "#8b5cf6" : "#fff",
-                    transition: isSeeking ? "none" : "width 0.25s linear",
-                  }}
-                />
-              </div>
-              {/* Native input layered transparently on top */}
-              <input
-                type="range"
-                min="0"
-                max={duration || 100}
-                value={progress}
-                onChange={handleSeek}
-                onMouseDown={() => setIsSeeking(true)}
-                onMouseUp={() => setIsSeeking(false)}
-                onTouchStart={() => setIsSeeking(true)}
-                onTouchEnd={() => setIsSeeking(false)}
-                onMouseEnter={() => setIsProgressHovered(true)}
-                onMouseLeave={() => setIsProgressHovered(false)}
-                className="melodystream-range w-full relative z-10"
-                style={{
-                  background: "transparent",
+            <div className="relative flex items-center w-full group h-6">
+              <WaveformProgress
+                trackId={currentTrackId || "default"}
+                progress={progress}
+                duration={duration}
+                onSeek={(newTime) => {
+                  if (audioRef.current) {
+                    audioRef.current.currentTime = newTime;
+                    setProgress(newTime);
+                  }
                 }}
               />
             </div>
@@ -5121,6 +5218,13 @@ export default function MelodyStreamDashboard({
             title="Queue"
           >
             <ListMusic className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => setIsCastingModalOpen(true)}
+            className={`transition-colors p-1 rounded-full ${activeCastingDevice ? "text-emerald-450 animate-pulse" : "text-[#b3b3b3] hover:text-white"}`}
+            title="Cast to Device"
+          >
+            <Cast className="w-5 h-5" />
           </button>
           <button
             onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
@@ -6279,6 +6383,69 @@ export default function MelodyStreamDashboard({
                 </button>
               </div>
 
+              <div className="flex items-center justify-between pt-4 border-t border-[#282828]">
+                <div>
+                  <h4 className="text-[14px] font-bold text-white">Language & Regional Locale</h4>
+                  <span className="text-xs text-[#b3b3b3]">Translate the app layout to your preferred dialect (Arabic includes RTL mirroring)</span>
+                </div>
+                <LocalisationSelector
+                  currentLang={currentLanguage}
+                  onLanguageChange={(lang) => {
+                    setCurrentLanguage(lang);
+                    localStorage.setItem("melodystream_lang", lang);
+                    showToast(`Language switched to ${lang.toUpperCase()} successfully!`, "success");
+                  }}
+                />
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t border-[#282828]">
+                <div>
+                  <h4 className="text-[14px] font-bold text-white">Compliance & GDPR Controls</h4>
+                  <span className="text-xs text-[#b3b3b3]">Export your personal listening history or invoke the "Right to be Forgotten" account deletion</span>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsSettingsModalOpen(false);
+                    setIsDataManagementModalOpen(true);
+                  }}
+                  className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-bold rounded-full transition-all"
+                >
+                  Open Compliance Center
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t border-[#282828]">
+                <div>
+                  <h4 className="text-[14px] font-bold text-white">Re-run Taste Personalisation</h4>
+                  <span className="text-xs text-[#b3b3b3]">Redo the onboarding genre & artist swipe-to-like quiz to update recommendations</span>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsSettingsModalOpen(false);
+                    setShowOnboardingTaste(true);
+                  }}
+                  className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-bold rounded-full transition-all"
+                >
+                  Reset Taste Profile
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t border-[#282828]">
+                <div>
+                  <h4 className="text-[14px] font-bold text-white">Operations & Admin Panel</h4>
+                  <span className="text-xs text-[#b3b3b3]">Review system performance, support tickets pipeline, and toggle experimental feature rollouts</span>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsSettingsModalOpen(false);
+                    setIsAdminPanelOpen(true);
+                  }}
+                  className="px-4 py-2 bg-emerald-400 hover:bg-emerald-350 text-gray-950 text-xs font-black rounded-full transition-all"
+                >
+                  Launch Admin Panel
+                </button>
+              </div>
+
               <div className="pt-6 border-t border-[#282828] mt-6">
                 <h4 className="text-sm font-black text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">
                   🎨 Theme Accent, Background & Sleep Timer
@@ -6416,6 +6583,69 @@ export default function MelodyStreamDashboard({
             </div>
           </div>
         </div>
+      )}
+
+      {/* MelodyStream Premium Background Audio Engine Pipeline */}
+      <AudioPipeline
+        primaryAudio={audioRef.current}
+        nextTrackUrl={null}
+        gaplessEnabled={featureFlags.gapless}
+        normalizationEnabled={featureFlags.normalization}
+      />
+
+      {/* Interactive AI DJ Commentary Broadcast Bar Overlay */}
+      {djCommentaryText && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-emerald-400 text-gray-950 font-black px-6 py-3.5 rounded-full shadow-2xl flex items-center gap-3 z-[400] animate-bounce text-xs border border-emerald-300">
+          <div className="w-2.5 h-2.5 rounded-full bg-gray-950 animate-ping" />
+          <span>AI DJ COMMENTARY: {djCommentaryText}</span>
+        </div>
+      )}
+
+      {/* Interactive Onboarding Taste capture Modal */}
+      {showOnboardingTaste && (
+        <OnboardingTaste
+          onComplete={(genres, artists) => {
+            localStorage.setItem("melodystream_taste_captured", "true");
+            setShowOnboardingTaste(false);
+            showToast(`Taste profile captured for ${artists.join(", ") || "various genres"}! Customizing home screen.`, "success");
+          }}
+        />
+      )}
+
+      {/* Simulative Casting Connection Overlay */}
+      {isCastingModalOpen && (
+        <CastingSimulator
+          onClose={() => setIsCastingModalOpen(false)}
+          activeDeviceId={activeCastingDevice}
+          onConnectDevice={(id, name) => {
+            setActiveCastingDevice(id);
+            setActiveCastingDeviceName(name);
+            if (id) {
+              showToast(`Synchronized and casting to "${name}" successfully!`, "success");
+            } else {
+              showToast("Casting session ended.", "info");
+            }
+            setIsCastingModalOpen(false);
+          }}
+        />
+      )}
+
+      {/* GDPR, Compliance and Legal Agreement Panel Overlay */}
+      {isDataManagementModalOpen && (
+        <DataManagement
+          userId={firebaseUser?.uid || null}
+          userEmail={firebaseUser?.email || null}
+          onClose={() => setIsDataManagementModalOpen(false)}
+        />
+      )}
+
+      {/* CRM, Curation and Ops Feature Flag Admin Dashboard Panel Overlay */}
+      {isAdminPanelOpen && (
+        <AdminPanel
+          onClose={() => setIsAdminPanelOpen(false)}
+          featureFlags={featureFlags}
+          setFeatureFlags={setFeatureFlags}
+        />
       )}
     </div>
   );
