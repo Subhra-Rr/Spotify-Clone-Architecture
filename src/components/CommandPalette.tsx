@@ -201,7 +201,7 @@ export function CommandPalette({
 
                           return (
                             <div
-                              key={item.id}
+                              key={`${item.id}-${itemIndex}`}
                               data-active={isActive}
                               onClick={() => triggerItem(item)}
                               onMouseEnter={() => setSelectedIndex(itemIndex)}

@@ -5270,9 +5270,9 @@ export default function MelodyStreamDashboard({
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-                      {followedArtists.map((artist) => (
+                      {followedArtists.map((artist, idx) => (
                         <motion.div
-                          key={artist}
+                          key={`followed-${artist}-${idx}`}
                           whileHover={{
                             scale: 1.04,
                             y: -4,
@@ -5585,7 +5585,7 @@ export default function MelodyStreamDashboard({
                   <div className="space-y-2.5">
                     {offlineTracksList.map((track, idx) => (
                       <motion.div
-                        key={track.id}
+                        key={`offline-${track.id}-${idx}`}
                         whileHover={{
                           scale: 1.015,
                           boxShadow: "0 4px 15px rgba(0,0,0,0.4)",

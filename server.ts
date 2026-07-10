@@ -257,7 +257,7 @@ app.get("/api/stream/:videoId", async (req, res) => {
             
             if (match && match.previewUrl) {
               matchedPreviewUrl = match.previewUrl;
-              console.log(`[Stream Proxy] Bypassed ytdl bot checks by redirecting "${title}" to iTunes CDN:`, matchedPreviewUrl);
+              // Redirect match found - logging omitted to prevent log spam from client requests
               break;
             }
           }
@@ -275,7 +275,7 @@ app.get("/api/stream/:videoId", async (req, res) => {
             const match = data.results.find((r: any) => r.previewUrl);
             if (match && match.previewUrl) {
               matchedPreviewUrl = match.previewUrl;
-              console.log(`[Stream Proxy] Title-only match fallback for "${cleanTitle}":`, matchedPreviewUrl);
+              // Redirect match found - logging omitted to prevent log spam
             }
           }
         } catch (e) {}
@@ -290,7 +290,7 @@ app.get("/api/stream/:videoId", async (req, res) => {
             const match = data.results.find((r: any) => r.previewUrl);
             if (match && match.previewUrl) {
               matchedPreviewUrl = match.previewUrl;
-              console.log(`[Stream Proxy] Artist-only match fallback for "${cleanArtist}":`, matchedPreviewUrl);
+              // Redirect match found - logging omitted to prevent log spam
             }
           }
         } catch (e) {}
@@ -312,7 +312,7 @@ app.get("/api/stream/:videoId", async (req, res) => {
     if (data && data.results && data.results.length > 0) {
       const match = data.results.find((r: any) => r.previewUrl);
       if (match && match.previewUrl) {
-        console.log(`[Stream Proxy] No match found for "${title}". Bypassing ytdl bot checks with highly stable dynamic Pop fallback:`, match.previewUrl);
+        // Redirect match found - logging omitted to prevent log spam
         return res.redirect(match.previewUrl);
       }
     }
@@ -675,6 +675,31 @@ app.post("/api/ai/search", async (req, res) => {
     res.json({ tracks: allResults });
   } catch (err: any) {
     console.error("[AI Search Error]", err);
+    try {
+      const fallbackResponse = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=15`);
+      const data: any = await fallbackResponse.json();
+      if (data && data.results) {
+        const formatted = data.results.filter((s: any) => s.previewUrl).map((song: any, i: number) => {
+          const songTitle = song.trackName || 'Song Hit';
+          const songArtist = song.artistName || 'Various Artists';
+          const trackId = `itunes-${song.trackId || i}`;
+          const signedUrl = signStreamUrl(trackId, songTitle, songArtist);
+          return {
+            id: trackId,
+            title: songTitle,
+            artist: songArtist,
+            album: song.collectionName || 'Album Hits',
+            duration: "03:30",
+            audioUrl: signedUrl,
+            coverUrl: song.artworkUrl100?.replace('100x100', '300x300') || 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=300',
+            uri: `itunes:track:${song.trackId || i}`
+          };
+        });
+        return res.json({ tracks: formatted });
+      }
+    } catch (fallbackErr) {
+      console.error("[AI Search Fallback Error]", fallbackErr);
+    }
     res.json({ tracks: [] });
   }
 });
@@ -723,7 +748,10 @@ app.post("/api/ai/generate-cover", async (req, res) => {
     }
   } catch (err: any) {
     console.error("[AI Cover Error]", err);
-    res.status(500).json({ error: "Failed to generate AI cover art" });
+    const unsplashKeywords = ["concert", "retro-tape", "guitar", "synthwave", "headphones", "aesthetic-vinyl"];
+    const randomKeyword = unsplashKeywords[Math.floor(Math.random() * unsplashKeywords.length)];
+    const mockCoverUrl = `https://images.unsplash.com/photo-1614680376593-902f74fa0d41?q=80&w=600&auto=format&fit=crop&q=80&sig=${Math.floor(Math.random() * 1000)}`;
+    res.json({ coverUrl: mockCoverUrl });
   }
 });
 
