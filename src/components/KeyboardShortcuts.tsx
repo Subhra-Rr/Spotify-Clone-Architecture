@@ -13,6 +13,7 @@ interface KeyboardShortcutsProps {
   onToggleMute: () => void;
   onToggleShuffle: () => void;
   onToggleRepeat: () => void;
+  onToggleCommandPalette?: () => void;
 }
 
 export function KeyboardShortcuts({
@@ -26,6 +27,7 @@ export function KeyboardShortcuts({
   onToggleMute,
   onToggleShuffle,
   onToggleRepeat,
+  onToggleCommandPalette,
 }: KeyboardShortcutsProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -38,6 +40,15 @@ export function KeyboardShortcuts({
         target.tagName === "TEXTAREA" ||
         target.isContentEditable
       ) {
+        return;
+      }
+
+      // Handle Command Palette globally (Ctrl+K or Cmd+K)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        if (onToggleCommandPalette) {
+          onToggleCommandPalette();
+        }
         return;
       }
 
@@ -112,10 +123,12 @@ export function KeyboardShortcuts({
     onToggleMute,
     onToggleShuffle,
     onToggleRepeat,
+    onToggleCommandPalette,
   ]);
 
   const shortcutsList = [
     { key: "Space", desc: "Play / Pause", icon: Play },
+    { key: "Ctrl + K", desc: "Command Palette", icon: Keyboard },
     { key: "Arrow Right", desc: "Skip Forward 10s", icon: FastForward },
     { key: "Arrow Left", desc: "Skip Backward 10s", icon: Rewind },
     { key: "Arrow Up", desc: "Volume Up 10%", icon: Volume2 },

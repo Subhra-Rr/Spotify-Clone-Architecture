@@ -90,6 +90,7 @@ import { SkeletonLoader } from "./components/SkeletonLoader";
 import { VolumeSlider } from "./components/VolumeSlider";
 import { ListeningStats, recordPlayInHistory } from "./components/ListeningStats";
 import { getOfflineTracks, saveOfflineTrack, deleteOfflineTrack, isTrackDownloaded } from "./utils/offlineDB";
+import { CommandPalette } from "./components/CommandPalette";
 
 enum OperationType {
   CREATE = "create",
@@ -763,6 +764,9 @@ export default function MelodyStreamDashboard({
     hdAudio: false,
   });
   const [currentLanguage, setCurrentLanguage] = useState<LanguageCode>("en");
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState(() => Number(localStorage.getItem("playbackSpeed") || "1"));
+  const [dominantColor, setDominantColor] = useState("rgba(139, 92, 246, 0.15)");
   const [activeCastingDevice, setActiveCastingDevice] = useState<string | null>(null);
   const [activeCastingDeviceName, setActiveCastingDeviceName] = useState<string | null>(null);
   const [isCastingModalOpen, setIsCastingModalOpen] = useState(false);
@@ -1697,6 +1701,141 @@ export default function MelodyStreamDashboard({
 
   const currentTrack = queue.find((t) => t.id === currentTrackId) || queue[currentTrackIndex];
 
+  // Dynamic Album Experience: Extract Dominant Color
+  useEffect(() => {
+    if (!currentTrack) {
+      setDominantColor("rgba(139, 92, 246, 0.15)");
+      return;
+    }
+
+    const extractColor = () => {
+      const imageUrl = currentTrack.coverUrl;
+      const title = currentTrack.title;
+      const artist = currentTrack.artist;
+
+      if (!imageUrl) {
+        setDominantColor("rgba(139, 92, 246, 0.15)");
+        return;
+      }
+
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        try {
+          const canvas = document.createElement("canvas");
+          canvas.width = 1;
+          canvas.height = 1;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, 1, 1);
+            const data = ctx.getImageData(0, 0, 1, 1).data;
+            setDominantColor(`rgba(${data[0]}, ${data[1]}, ${data[2]}, 0.25)`);
+            return;
+          }
+        } catch (e) {
+          console.warn("Canvas CORS/load color block, hashing fallback.", e);
+        }
+        fallback();
+      };
+      img.onerror = () => {
+        fallback();
+      };
+      img.src = imageUrl;
+
+      function fallback() {
+        const hashStr = `${title} ${artist}`;
+        let hash = 0;
+        for (let i = 0; i < hashStr.length; i++) {
+          hash = hashStr.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const colors = [
+          "rgba(139, 92, 246, 0.25)", // purple
+          "rgba(29, 185, 84, 0.25)",  // green
+          "rgba(6, 182, 212, 0.25)",  // cyan
+          "rgba(245, 158, 11, 0.25)", // amber
+          "rgba(236, 72, 153, 0.25)", // pink
+          "rgba(59, 130, 246, 0.25)", // blue
+        ];
+        const index = Math.abs(hash) % colors.length;
+        setDominantColor(colors[index]);
+      }
+    };
+
+    extractColor();
+  }, [currentTrack]);
+
+  // Record playback history when current track changes
+  useEffect(() => {
+    if (currentTrack) {
+      recordPlayInHistory(currentTrack);
+    }
+  }, [currentTrack]);
+
+  // Handle Playback Rate Control
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.playbackRate = playbackSpeed;
+    }
+  }, [playbackSpeed, currentTrack, isPlaying]);
+
+  // Handle Volume Normalization Adjustment
+  useEffect(() => {
+    if (audioRef.current) {
+      const isNorm = featureFlags.normalization;
+      const finalVolume = isNorm ? volume * 0.82 : volume;
+      audioRef.current.volume = finalVolume;
+    }
+  }, [volume, featureFlags.normalization, currentTrack]);
+
+  // Gapless Preloading side-effect
+  useEffect(() => {
+    if (!currentTrack || isOffline) return;
+
+    if (duration > 0 && duration - progress < 15 && featureFlags.gapless) {
+      const nextIndex = (currentTrackIndex + 1) % queue.length;
+      const nextTrack = queue[nextIndex];
+      if (nextTrack && nextTrack.audioUrl) {
+        const audioPreload = new Audio();
+        audioPreload.src = nextTrack.audioUrl;
+        audioPreload.preload = "auto";
+
+        if (nextTrack.coverUrl) {
+          const imgPreload = new Image();
+          imgPreload.src = nextTrack.coverUrl;
+        }
+      }
+    }
+  }, [progress, duration, currentTrack, currentTrackIndex, queue, isOffline, featureFlags.gapless]);
+
+  // Persistent Queue load on boot
+  useEffect(() => {
+    try {
+      const savedQueue = localStorage.getItem("melodystream_saved_queue");
+      const savedIndex = localStorage.getItem("melodystream_saved_track_index");
+      if (savedQueue) {
+        const parsed = JSON.parse(savedQueue);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setQueue(parsed);
+          const idx = Number(savedIndex || "0");
+          setCurrentTrackIndex(idx);
+          if (parsed[idx]) {
+            setCurrentTrackId(parsed[idx].id);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Could not restore saved queue:", e);
+    }
+  }, []);
+
+  // Save current queue and index whenever they change
+  useEffect(() => {
+    if (queue.length > 0) {
+      localStorage.setItem("melodystream_saved_queue", JSON.stringify(queue));
+      localStorage.setItem("melodystream_saved_track_index", String(currentTrackIndex));
+    }
+  }, [queue, currentTrackIndex]);
+
   useEffect(() => {
     if (!currentTrack) {
       setLyrics(null);
@@ -1806,6 +1945,10 @@ export default function MelodyStreamDashboard({
       if (currentRepeat === "all") {
         nextIndex = 0;
       } else {
+        if (autoplay && !isOffline) {
+          triggerSmartAutoplay();
+          return;
+        }
         setIsPlaying(false);
         setProgress(0);
         if (!isAutoEvent) {
@@ -1830,6 +1973,59 @@ export default function MelodyStreamDashboard({
         playMusic(nextTrack.id);
       }
     }
+  };
+
+  const triggerSmartAutoplay = async () => {
+    const lastTrack = queue[queue.length - 1];
+    if (!lastTrack) return;
+
+    showToast("Smart Autoplay: Finding similar tracks...", "info");
+    try {
+      const queryToSearch = encodeURIComponent(lastTrack.artist || lastTrack.title || "lofi");
+      const response = await fetch(
+        `https://itunes.apple.com/search?term=${queryToSearch}&entity=song&limit=6`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        if (data.results && data.results.length > 0) {
+          const fetched: Track[] = data.results.map((r: any) => ({
+            id: String(r.trackId),
+            title: r.trackName,
+            artist: r.artistName,
+            album: r.collectionName || "Single",
+            audioUrl: r.previewUrl,
+            coverUrl: r.artworkUrl100 ? r.artworkUrl100.replace("100x100bb", "500x500bb") : "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300",
+            duration: (() => {
+              const sec = Math.floor((r.trackTimeMillis || 0) / 1000);
+              const m = Math.floor(sec / 60);
+              const s = sec % 60;
+              return `${m}:${s < 10 ? "0" : ""}${s}`;
+            })(),
+          }));
+
+          const uniqueNewTracks = fetched.filter(
+            (newT) => !queue.some((oldT) => oldT.id === newT.id)
+          );
+
+          if (uniqueNewTracks.length > 0) {
+            const updatedQueue = [...queue, ...uniqueNewTracks];
+            setQueue(updatedQueue);
+            
+            const nextIdx = queue.length;
+            setCurrentTrackIndex(nextIdx);
+            setCurrentTrackId(uniqueNewTracks[0].id);
+            playMusic(uniqueNewTracks[0].id, updatedQueue);
+            showToast("Smart Autoplay: Loaded dynamic recommendations!", "success");
+            return;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Smart Autoplay recommendation failed:", e);
+    }
+    
+    setIsPlaying(false);
+    setProgress(0);
   };
 
   const playNextWithAiDj = async (currentTrack: Track, nextTrack: Track) => {
@@ -2795,8 +2991,17 @@ export default function MelodyStreamDashboard({
       className={`flex flex-col h-screen text-white font-sans overflow-hidden select-none relative ${isMobileView ? "pb-[calc(140px+env(safe-area-inset-bottom,0px))]" : "pb-[90px]"}`}
       style={{ background: 'linear-gradient(135deg, var(--theme-bg-from, #000000), var(--theme-bg-to, #000000))' }}
     >
+      {/* Dynamic Ambient Blur Aura Backdrop */}
+      <div 
+        className="absolute inset-0 pointer-events-none transition-all duration-1000 ease-in-out opacity-45 mix-blend-screen z-0"
+        style={{
+          backgroundImage: `radial-gradient(circle at 50% 20%, ${dominantColor}, transparent 55%)`
+        }}
+      />
+
       <TopLoadingBar />
       <KeyboardShortcuts
+        onToggleCommandPalette={() => setIsCommandPaletteOpen(prev => !prev)}
         onTogglePlay={togglePlayPause}
         onNext={() => handleNext(false)}
         onPrev={handlePrev}
@@ -5626,6 +5831,48 @@ export default function MelodyStreamDashboard({
               }
             }}
           />
+          {/* Playback Speed Selector Option */}
+          <div className="relative group/speed flex items-center shrink-0">
+            <button
+              className="text-[#b3b3b3] hover:text-white transition-colors text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 border border-white/5 font-black"
+              title="Change Playback Speed"
+            >
+              {playbackSpeed}x
+            </button>
+            <div className="absolute bottom-full right-0 mb-2 hidden group-hover/speed:block bg-black/95 border border-white/10 rounded-xl p-1.5 shadow-2xl z-50 min-w-[75px] space-y-1">
+              {[0.5, 1.0, 1.25, 1.5, 2.0].map((rate) => (
+                <button
+                  key={rate}
+                  onClick={() => {
+                    setPlaybackSpeed(rate);
+                    localStorage.setItem("playbackSpeed", String(rate));
+                  }}
+                  className={`w-full text-left px-2.5 py-1 rounded-lg text-[10px] font-bold block transition-colors ${playbackSpeed === rate ? "bg-[#8b5cf6] text-white" : "text-[#b3b3b3] hover:bg-white/10 hover:text-white"}`}
+                >
+                  {rate}x
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Volume Normalization (ReplayGain) Toggle */}
+          <button
+            onClick={() => {
+              setFeatureFlags((prev) => {
+                const nextVal = !prev.normalization;
+                return { ...prev, normalization: nextVal };
+              });
+              showToast(
+                `Volume Normalization: ${!featureFlags.normalization ? "ON (Consistent Level)" : "OFF"}`,
+                "info"
+              );
+            }}
+            className={`transition-colors p-1 rounded-full shrink-0 ${featureFlags.normalization ? "text-amber-400" : "text-[#b3b3b3] hover:text-white"}`}
+            title="Volume Normalization (ReplayGain)"
+          >
+            <Sparkles className="w-4 h-4" />
+          </button>
+
           <button
             onClick={() => navigateTo("queue")}
             className={`transition-colors p-1 rounded-full ${activeTab === "queue" ? "text-[#8b5cf6]" : "text-[#b3b3b3] hover:text-white"}`}
@@ -7056,6 +7303,20 @@ export default function MelodyStreamDashboard({
           setFeatureFlags={setFeatureFlags}
         />
       )}
+
+      {/* Command Palette Overlay Modal */}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        onNavigate={navigateTo}
+        onPlayTrack={(track) => {
+          setQueue([track]);
+          setCurrentTrackIndex(0);
+          setCurrentTrackId(track.id);
+          playMusic(track.id, [track]);
+        }}
+        tracks={tracks}
+      />
     </div>
   );
 }
