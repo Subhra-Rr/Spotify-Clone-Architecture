@@ -3614,9 +3614,20 @@ export default function MelodyStreamDashboard({
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
                       {searchHistory.map((item, i) => (
-                        <div
+                        <motion.div
                           key={`history-${item.id}-${i}`}
-                          className="bg-[#181818] p-4 rounded-md cursor-pointer hover:bg-[#282828] transition-all duration-300 group flex flex-col shadow-lg hover:scale-105 active:scale-[0.98]"
+                          whileHover={{
+                            scale: 1.04,
+                            y: -4,
+                            boxShadow: "0 20px 25px -5px rgba(0,0,0,0.5), 0 10px 10px -5px rgba(0,0,0,0.5)",
+                          }}
+                          whileTap={{ scale: 0.96 }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 350,
+                            damping: 20,
+                          }}
+                          className="bg-[#181818] p-4 rounded-md cursor-pointer hover:bg-[#282828] transition-all duration-300 group flex flex-col shadow-lg"
                           onClick={() => {
                             handleTrackSelect(i, searchHistory);
                             addToSearchHistory(item);
@@ -3656,7 +3667,7 @@ export default function MelodyStreamDashboard({
                               className="text-sm text-[#b3b3b3] truncate max-w-full block"
                             />
                           </div>
-                        </div>
+                        </motion.div>
                       ))}
                     </div>
                   </div>
@@ -3897,9 +3908,19 @@ export default function MelodyStreamDashboard({
                       </h2>
                       <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
                         {startBrowsingCategories.map((cat) => (
-                          <div
+                          <motion.div
                             key={cat.id}
-                            className="relative rounded-lg overflow-hidden cursor-pointer w-full aspect-[2/1] sm:aspect-[2.2/1] transition-colors"
+                            whileHover={{
+                              scale: 1.05,
+                              boxShadow: "0 12px 24px -10px rgba(0,0,0,0.6)",
+                            }}
+                            whileTap={{ scale: 0.98 }}
+                            transition={{
+                              type: "spring",
+                              stiffness: 400,
+                              damping: 22,
+                            }}
+                            className="relative rounded-lg overflow-hidden cursor-pointer w-full aspect-[2/1] sm:aspect-[2.2/1] transition-all"
                             style={{ backgroundColor: cat.color }}
                             onClick={() => setSearchQuery(cat.name)}
                           >
@@ -3914,7 +3935,7 @@ export default function MelodyStreamDashboard({
                               />
                             </div>
                             <div className="absolute inset-0 bg-transparent hover:bg-black/10 transition-colors pointer-events-none"></div>
-                          </div>
+                          </motion.div>
                         ))}
                       </div>
                     </div>
@@ -3925,9 +3946,19 @@ export default function MelodyStreamDashboard({
                       </h2>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
                         {categories.map((cat) => (
-                          <div
+                          <motion.div
                             key={cat.id}
-                            className="relative overflow-hidden rounded-xl aspect-square cursor-pointer transition-colors"
+                            whileHover={{
+                              scale: 1.05,
+                              boxShadow: "0 12px 24px -10px rgba(0,0,0,0.6)",
+                            }}
+                            whileTap={{ scale: 0.98 }}
+                            transition={{
+                              type: "spring",
+                              stiffness: 400,
+                              damping: 22,
+                            }}
+                            className="relative overflow-hidden rounded-xl aspect-square cursor-pointer transition-all"
                             style={{ backgroundColor: cat.color }}
                             onClick={() => setSearchQuery(cat.name)}
                           >
@@ -3942,7 +3973,7 @@ export default function MelodyStreamDashboard({
                               />
                             </div>
                             <div className="absolute inset-0 bg-transparent hover:bg-black/10 transition-colors pointer-events-none"></div>
-                          </div>
+                          </motion.div>
                         ))}
                       </div>
                     </div>
@@ -4025,14 +4056,18 @@ export default function MelodyStreamDashboard({
                           initial={{ opacity: 0, y: 15 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, x: -30, scale: 0.95 }}
-                          whileHover={{ scale: 1.01, x: 4 }}
+                          whileHover={{
+                            scale: 1.015,
+                            x: 6,
+                            boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
+                          }}
                           whileTap={{ scale: 0.99 }}
                           transition={{
                             type: "spring",
                             stiffness: 400,
                             damping: 25,
                           }}
-                        className={`flex items-center justify-between p-2 rounded-md hover:bg-[#2a2a2a] group cursor-pointer ${queue === likedTracks && currentTrackIndex === i ? "bg-[#2a2a2a]" : ""}`}
+                        className={`flex items-center justify-between p-2 rounded-md hover:bg-[#2a2a2a] group cursor-pointer transition-all duration-300 ${queue === likedTracks && currentTrackIndex === i ? "bg-[#2a2a2a]" : ""}`}
                         onClick={() => handleTrackSelect(i, likedTracks)}
                         onContextMenu={(e) => handleTrackContextMenu(e, item)}
                       >
@@ -4423,14 +4458,18 @@ export default function MelodyStreamDashboard({
                               initial={{ opacity: 0, y: 15 }}
                               animate={{ opacity: 1, y: 0 }}
                               exit={{ opacity: 0, x: -30, scale: 0.95 }}
-                              whileHover={{ scale: 1.01, x: 4 }}
+                              whileHover={{
+                                scale: 1.015,
+                                x: 6,
+                                boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
+                              }}
                               whileTap={{ scale: 0.99 }}
                               transition={{
                                 type: "spring",
                                 stiffness: 400,
                                 damping: 25,
                               }}
-                            className={`flex items-center justify-between p-2 rounded-md hover:bg-[#2a2a2a] group cursor-pointer ${queue === plTracks && currentTrackIndex === i ? "bg-[#2a2a2a]" : ""}`}
+                            className={`flex items-center justify-between p-2 rounded-md hover:bg-[#2a2a2a] group cursor-pointer transition-all duration-300 ${queue === plTracks && currentTrackIndex === i ? "bg-[#2a2a2a]" : ""}`}
                             onClick={() => handleTrackSelect(i, plTracks)}
                             onContextMenu={(e) =>
                               handleTrackContextMenu(e, item)
@@ -4641,14 +4680,18 @@ export default function MelodyStreamDashboard({
                     {artistTopTracks.map((item, i) => (
                       <motion.div
                         key={`artist-track-${item.id}-${i}`}
-                        whileHover={{ scale: 1.01, x: 4 }}
+                        whileHover={{
+                          scale: 1.015,
+                          x: 6,
+                          boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
+                        }}
                         whileTap={{ scale: 0.99 }}
                         transition={{
                           type: "spring",
                           stiffness: 400,
                           damping: 25,
                         }}
-                        className="flex items-center p-2 hover:bg-white/10 rounded-md cursor-pointer group transition-colors"
+                        className="flex items-center p-2 hover:bg-white/10 rounded-md cursor-pointer group transition-all duration-300"
                         onClick={() => handleTrackSelect(i, artistTopTracks)}
                         onContextMenu={(e) => handleTrackContextMenu(e, item)}
                       >
@@ -4929,8 +4972,19 @@ export default function MelodyStreamDashboard({
                   ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
                       {followedArtists.map((artist) => (
-                        <div
+                        <motion.div
                           key={artist}
+                          whileHover={{
+                            scale: 1.04,
+                            y: -4,
+                            boxShadow: "0 20px 25px -5px rgba(0,0,0,0.5), 0 10px 10px -5px rgba(0,0,0,0.5)",
+                          }}
+                          whileTap={{ scale: 0.96 }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 350,
+                            damping: 20,
+                          }}
                           onClick={() => navigateTo("artist", artist)}
                           className="bg-[#181818] p-4 rounded-md cursor-pointer hover:bg-[#282828] transition-all duration-300 group flex flex-col shadow-lg"
                         >
@@ -4947,7 +5001,7 @@ export default function MelodyStreamDashboard({
                           <p className="text-sm text-[#b3b3b3] truncate">
                             Artist
                           </p>
-                        </div>
+                        </motion.div>
                       ))}
                     </div>
                   )}
@@ -5128,9 +5182,20 @@ export default function MelodyStreamDashboard({
                     </h3>
                     <div className="flex flex-col gap-2">
                       {queue.slice(currentTrackIndex + 1).map((item, idx) => (
-                        <div
+                        <motion.div
                           key={`${item.id}-${idx}`}
-                          className="flex items-center gap-4 p-2 rounded-md hover:bg-[#1a1a1a] transition-colors group cursor-pointer"
+                          whileHover={{
+                            scale: 1.015,
+                            x: 4,
+                            boxShadow: "0 4px 15px rgba(0,0,0,0.4)",
+                          }}
+                          whileTap={{ scale: 0.99 }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 450,
+                            damping: 25,
+                          }}
+                          className="flex items-center gap-4 p-2 rounded-md hover:bg-[#1a1a1a] transition-all duration-300 group cursor-pointer"
                           onClick={() => {
                             const newIndex = currentTrackIndex + 1 + idx;
                             setCurrentTrackIndex(newIndex);
@@ -5159,7 +5224,7 @@ export default function MelodyStreamDashboard({
                               className="text-[#b3b3b3] truncate text-sm block"
                             />
                           </div>
-                        </div>
+                        </motion.div>
                       ))}
                     </div>
                   </div>
@@ -5220,8 +5285,18 @@ export default function MelodyStreamDashboard({
                 ) : (
                   <div className="space-y-2.5">
                     {offlineTracksList.map((track, idx) => (
-                      <div
+                      <motion.div
                         key={track.id}
+                        whileHover={{
+                          scale: 1.015,
+                          boxShadow: "0 4px 15px rgba(0,0,0,0.4)",
+                        }}
+                        whileTap={{ scale: 0.99 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 450,
+                          damping: 25,
+                        }}
                         className="flex items-center justify-between p-3 rounded-xl bg-white/[0.01] hover:bg-white/[0.03] transition-all border border-white/[0.02] group"
                       >
                         <div className="flex items-center gap-4 flex-1 min-w-0">
@@ -5254,7 +5329,7 @@ export default function MelodyStreamDashboard({
                             Remove
                           </button>
                         </div>
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
                 )}
