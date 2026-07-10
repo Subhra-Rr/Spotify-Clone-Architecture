@@ -34,6 +34,9 @@ import {
   Laptop,
   Smartphone,
   Cast,
+  Music,
+  Users,
+  Disc,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import YouTube from "react-youtube";
@@ -82,6 +85,7 @@ import { KeyboardShortcuts } from "./components/KeyboardShortcuts";
 import { ThemeCustomizer } from "./components/ThemeCustomizer";
 import { TopLoadingBar, startLoadingBar, stopLoadingBar } from "./components/TopLoadingBar";
 import { SkeletonLoader } from "./components/SkeletonLoader";
+import { VolumeSlider } from "./components/VolumeSlider";
 import { ListeningStats, recordPlayInHistory } from "./components/ListeningStats";
 import { getOfflineTracks, saveOfflineTrack, deleteOfflineTrack, isTrackDownloaded } from "./utils/offlineDB";
 
@@ -737,6 +741,8 @@ export default function MelodyStreamDashboard({
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Track[]>([]);
+  const [searchArtists, setSearchArtists] = useState<any[]>([]);
+  const [searchAlbums, setSearchAlbums] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [lyrics, setLyrics] = useState<string | null>(null);
   const [isFetchingLyrics, setIsFetchingLyrics] = useState(false);
@@ -1500,6 +1506,8 @@ export default function MelodyStreamDashboard({
     if (activeTab === "search") {
       if (!searchQuery.trim()) {
         setSearchResults([]);
+        setSearchArtists([]);
+        setSearchAlbums([]);
         setIsSearching(false);
         return;
       }
@@ -1507,50 +1515,149 @@ export default function MelodyStreamDashboard({
       const debounceTimer = setTimeout(() => {
         setIsSearching(true);
 
-        const useAiSearch = isAiSearchActive || searchQuery.toLowerCase().startsWith("ai:");
-        const cleanQuery = searchQuery.replace(/^ai:\s*/i, "");
+        const useSpotify = accessToken && accessToken !== "local_bypass";
 
-        const endpoint = useAiSearch ? "/api/ai/search" : `/api/search?q=${encodeURIComponent(searchQuery)}`;
-        const fetchPromise = useAiSearch
-          ? fetch(endpoint, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ query: cleanQuery }),
+        const runFallbackSearch = () => {
+          const useAiSearch = isAiSearchActive || searchQuery.toLowerCase().startsWith("ai:");
+          const cleanQuery = searchQuery.replace(/^ai:\s*/i, "");
+
+          const endpoint = useAiSearch ? "/api/ai/search" : `/api/search?q=${encodeURIComponent(searchQuery)}`;
+          const fetchPromise = useAiSearch
+            ? fetch(endpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ query: cleanQuery }),
+              })
+            : fetch(endpoint);
+
+          fetchPromise
+            .then(async (res) => {
+              if (!res.ok) throw new Error("Search failed");
+              const rawData = await res.json();
+              return useAiSearch ? (rawData.tracks || []) : rawData;
             })
-          : fetch(endpoint);
+            .then(async (data) => {
+              if (data && data.length > 0) {
+                const enhanced = await enhanceTracks(data);
+                setSearchResults(enhanced);
 
-        fetchPromise
-          .then(async (res) => {
-            if (!res.ok) throw new Error("Search failed");
-            const rawData = await res.json();
-            return useAiSearch ? (rawData.tracks || []) : rawData;
-          })
-          .then(async (data) => {
-            if (data && data.length > 0) {
-              const enhanced = await enhanceTracks(data);
-              setSearchResults(enhanced);
-            } else {
-              setSearchResults([]);
+                // Populate artists and albums fallbacks from tracks to keep the grid populated beautifully!
+                const artistMap = new Map();
+                const albumMap = new Map();
+
+                enhanced.forEach((t: any) => {
+                  if (t.artist && !artistMap.has(t.artist)) {
+                    artistMap.set(t.artist, {
+                      id: `artist-${t.artist}`,
+                      name: t.artist,
+                      coverUrl: t.coverUrl,
+                      uri: `local:artist:${t.artist}`
+                    });
+                  }
+                  if (t.album && !albumMap.has(t.album)) {
+                    albumMap.set(t.album, {
+                      id: `album-${t.album}`,
+                      name: t.album,
+                      artist: t.artist,
+                      coverUrl: t.coverUrl,
+                      uri: `local:album:${t.album}`
+                    });
+                  }
+                });
+
+                setSearchArtists(Array.from(artistMap.values()));
+                setSearchAlbums(Array.from(albumMap.values()));
+              } else {
+                setSearchResults([]);
+                setSearchArtists([]);
+                setSearchAlbums([]);
+              }
+            })
+            .catch((err) => {
+              console.error("Local fallback search failed:", err);
+              setSearchResults([
+                {
+                  id: `err-${Date.now()}`,
+                  title: searchQuery,
+                  artist: "Unknown",
+                  album: "",
+                  duration: "00:00",
+                  audioUrl: "",
+                  coverUrl:
+                    "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=300",
+                  uri: `error:search`,
+                },
+              ]);
+              setSearchArtists([]);
+              setSearchAlbums([]);
+            })
+            .finally(() => {
+              setIsSearching(false);
+            });
+        };
+
+        if (useSpotify) {
+          fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(searchQuery)}&type=track,artist,album&limit=12`, {
+            headers: {
+              Authorization: `Bearer ${accessToken}`
             }
           })
-          .catch((err) => {
-            setSearchResults([
-              {
-                id: `err-${Date.now()}`,
-                title: searchQuery,
-                artist: "Unknown",
-                album: "",
-                duration: "00:00",
-                audioUrl: "",
-                coverUrl:
-                  "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=300",
-                uri: `error:search`,
-              },
-            ]);
-          })
-          .finally(() => {
-            setIsSearching(false);
-          });
+            .then(async (res) => {
+              if (res.status === 401) {
+                throw new Error("Spotify unauthorized");
+              }
+              if (!res.ok) throw new Error("Spotify search failed");
+              return res.json();
+            })
+            .then((data) => {
+              // Parse tracks
+              const sfTracks = (data.tracks?.items || []).map((item: any) => {
+                const durMin = Math.floor(item.duration_ms / 60000);
+                const durSec = Math.floor((item.duration_ms % 60000) / 1000);
+                const durationStr = `${durMin.toString().padStart(2, "0")}:${durSec.toString().padStart(2, "0")}`;
+                return {
+                  id: item.id,
+                  title: item.name,
+                  artist: item.artists.map((a: any) => a.name).join(", "),
+                  album: item.album.name,
+                  duration: durationStr,
+                  audioUrl: `/api/stream/${item.id}?title=${encodeURIComponent(item.name)}&artist=${encodeURIComponent(item.artists[0]?.name || "Unknown")}`,
+                  coverUrl: item.album.images?.[0]?.url || "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=300",
+                  uri: item.uri || `spotify:track:${item.id}`
+                };
+              });
+
+              // Parse artists
+              const sfArtists = (data.artists?.items || []).map((item: any) => ({
+                id: item.id,
+                name: item.name,
+                coverUrl: item.images?.[0]?.url || "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=300",
+                uri: item.uri || `spotify:artist:${item.id}`
+              }));
+
+              // Parse albums
+              const sfAlbums = (data.albums?.items || []).map((item: any) => ({
+                id: item.id,
+                name: item.name,
+                artist: item.artists.map((a: any) => a.name).join(", "),
+                coverUrl: item.images?.[0]?.url || "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=300",
+                uri: item.uri || `spotify:album:${item.id}`
+              }));
+
+              setSearchResults(sfTracks);
+              setSearchArtists(sfArtists);
+              setSearchAlbums(sfAlbums);
+            })
+            .catch((err) => {
+              console.error("Spotify search error, using fallback:", err);
+              runFallbackSearch();
+            })
+            .finally(() => {
+              setIsSearching(false);
+            });
+        } else {
+          runFallbackSearch();
+        }
       }, 500);
 
       return () => clearTimeout(debounceTimer);
@@ -3040,11 +3147,9 @@ export default function MelodyStreamDashboard({
                 </div>
 
                 {isLoadingCategory ? (
-                  <div className="flex flex-col items-center justify-center p-12 mt-10">
-                    <Loader2 className="w-12 h-12 text-[#8b5cf6] animate-spin mb-4" />
-                    <p className="text-[#b3b3b3] font-medium animate-pulse text-lg">
-                      Loading {homeCategory}...
-                    </p>
+                  <div className="mt-6 mb-10">
+                    <div className="h-6 bg-white/10 rounded w-1/4 mb-6 animate-pulse" />
+                    <SkeletonLoader type="card-grid" count={6} />
                   </div>
                 ) : homeCategory !== "all" ? (
                   <div className="mt-6 mb-10 pb-8">
@@ -3588,102 +3693,201 @@ export default function MelodyStreamDashboard({
                   </div>
                 )}
                 {isSearching && searchQuery ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
-                    {Array.from({ length: 12 }).map((_, i) => (
-                      <div
-                        key={`skeleton-${i}`}
-                        className="bg-[#181818] p-4 rounded-md flex flex-col shadow-lg animate-pulse"
-                      >
-                        <div className="relative aspect-square w-full mb-4 bg-[#333] rounded flex-shrink-0"></div>
-                        <div className="h-4 bg-[#333] rounded w-3/4 mb-2"></div>
-                        <div className="h-3 bg-[#333] rounded w-1/2"></div>
+                   <SkeletonLoader type="card-grid" count={12} />
+                 ) : searchQuery ? (
+                  <div className="space-y-12 pb-24">
+                    {/* Songs Section */}
+                    {sortedSearchResults.length > 0 && (
+                      <div>
+                        <h3 className="text-xl font-bold text-white mb-6 tracking-tight flex items-center gap-2">
+                          <Music className="w-5 h-5 text-[#8b5cf6]" /> Songs
+                        </h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
+                          <AnimatePresence mode="popLayout">
+                            {sortedSearchResults.map((item, i) => (
+                              <motion.div
+                                key={`search-${item.id}-${i}`}
+                                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: -15 }}
+                                whileHover={{
+                                  scale: 1.04,
+                                  y: -4,
+                                  boxShadow:
+                                    "0 20px 25px -5px rgba(0,0,0,0.5), 0 10px 10px -5px rgba(0,0,0,0.5)",
+                                }}
+                                whileTap={{ scale: 0.96 }}
+                                transition={{
+                                  type: "spring",
+                                  stiffness: 350,
+                                  damping: 20,
+                                }}
+                                className="bg-[#181818] p-4 rounded-md cursor-pointer hover:bg-[#282828] transition-all duration-300 group flex flex-col shadow-lg"
+                                onClick={() => {
+                                  handleTrackSelect(i, sortedSearchResults);
+                                  addToSearchHistory(item);
+                                }}
+                              >
+                                <div className="relative aspect-square w-full mb-4 shadow-[0_8px_24px_rgba(0,0,0,0.5)] overflow-hidden rounded flex-shrink-0">
+                                  <img
+                                    src={item.coverUrl}
+                                    className="object-cover w-full h-full bg-[#333]"
+                                    alt="cover"
+                                  />
+                                  <button
+                                    className={`absolute top-2 right-12 bg-black/50 text-white w-8 h-8 rounded-full flex items-center justify-center hover:scale-105 hover:bg-black/80 transition-all opacity-0 group-hover:opacity-100 z-10`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      addToPlaylist(item);
+                                    }}
+                                    title="Add to Playlist"
+                                  >
+                                    <Plus className="w-5 h-5" />
+                                  </button>
+                                  <button
+                                    className={`absolute top-2 right-2 bg-black/50 text-white w-8 h-8 rounded-full flex items-center justify-center hover:scale-105 hover:bg-black/80 transition-all opacity-0 group-hover:opacity-100 z-10`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      addToQueue(item);
+                                    }}
+                                    title="Add to Next Up"
+                                  >
+                                    <ListPlus className="w-5 h-5" />
+                                  </button>
+                                  <button
+                                    className={`absolute bottom-2 right-2 bg-[#8b5cf6] text-black w-12 h-12 rounded-full flex items-center justify-center shadow-xl hover:scale-105 hover:bg-[#a78bfa] transition-all transform duration-300 
+                                            ${queue === sortedSearchResults && currentTrackIndex === i && isPlaying ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0"}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleTrackSelect(i, sortedSearchResults);
+                                      addToSearchHistory(item);
+                                    }}
+                                  >
+                                    {queue === sortedSearchResults &&
+                                    currentTrackIndex === i &&
+                                    isPlaying ? (
+                                      <Pause className="w-6 h-6 fill-current" />
+                                    ) : (
+                                      <Play className="w-6 h-6 fill-current ml-1" />
+                                    )}
+                                  </button>
+                                </div>
+                                <div className="flex flex-col flex-1 h-full">
+                                  <h3 className="font-bold text-white text-[15px] truncate max-w-full pb-1">
+                                    {item.title}
+                                  </h3>
+                                  <ClickableArtists
+                                    artist={item.artist}
+                                    onArtistClick={openArtistPage}
+                                    className="text-sm text-[#b3b3b3] truncate max-w-full block"
+                                  />
+                                </div>
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                ) : searchQuery ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
-                    <AnimatePresence mode="popLayout">
-                      {sortedSearchResults.map((item, i) => (
-                        <motion.div
-                          key={`search-${item.id}-${i}`}
-                          initial={{ opacity: 0, scale: 0.95, y: 15 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.95, y: -15 }}
-                          whileHover={{
-                            scale: 1.04,
-                            y: -4,
-                            boxShadow:
-                              "0 20px 25px -5px rgba(0,0,0,0.5), 0 10px 10px -5px rgba(0,0,0,0.5)",
-                          }}
-                          whileTap={{ scale: 0.96 }}
-                          transition={{
-                            type: "spring",
-                            stiffness: 350,
-                            damping: 20,
-                          }}
-                        className="bg-[#181818] p-4 rounded-md cursor-pointer hover:bg-[#282828] transition-all duration-300 group flex flex-col shadow-lg"
-                        onClick={() => {
-                          handleTrackSelect(i, sortedSearchResults);
-                          addToSearchHistory(item);
-                        }}
-                      >
-                        <div className="relative aspect-square w-full mb-4 shadow-[0_8px_24px_rgba(0,0,0,0.5)] overflow-hidden rounded flex-shrink-0">
-                          <img
-                            src={item.coverUrl}
-                            className="object-cover w-full h-full bg-[#333]"
-                            alt="cover"
-                          />
-                          <button
-                            className={`absolute top-2 right-12 bg-black/50 text-white w-8 h-8 rounded-full flex items-center justify-center hover:scale-105 hover:bg-black/80 transition-all opacity-0 group-hover:opacity-100 z-10`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              addToPlaylist(item);
-                            }}
-                            title="Add to Playlist"
-                          >
-                            <Plus className="w-5 h-5" />
-                          </button>
-                          <button
-                            className={`absolute top-2 right-2 bg-black/50 text-white w-8 h-8 rounded-full flex items-center justify-center hover:scale-105 hover:bg-black/80 transition-all opacity-0 group-hover:opacity-100 z-10`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              addToQueue(item);
-                            }}
-                            title="Add to Next Up"
-                          >
-                            <ListPlus className="w-5 h-5" />
-                          </button>
-                          <button
-                            className={`absolute bottom-2 right-2 bg-[#8b5cf6] text-black w-12 h-12 rounded-full flex items-center justify-center shadow-xl hover:scale-105 hover:bg-[#a78bfa] transition-all transform duration-300 
-                                    ${queue === sortedSearchResults && currentTrackIndex === i && isPlaying ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0"}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleTrackSelect(i, sortedSearchResults);
-                              addToSearchHistory(item);
-                            }}
-                          >
-                            {queue === sortedSearchResults &&
-                            currentTrackIndex === i &&
-                            isPlaying ? (
-                              <Pause className="w-6 h-6 fill-current" />
-                            ) : (
-                              <Play className="w-6 h-6 fill-current ml-1" />
-                            )}
-                          </button>
+                    )}
+
+                    {/* Artists Section */}
+                    {searchArtists.length > 0 && (
+                      <div>
+                        <h3 className="text-xl font-bold text-white mb-6 tracking-tight flex items-center gap-2">
+                          <Users className="w-5 h-5 text-[#8b5cf6]" /> Artists
+                        </h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
+                          <AnimatePresence mode="popLayout">
+                            {searchArtists.map((artist, i) => (
+                              <motion.div
+                                key={`artist-search-${artist.id}-${i}`}
+                                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: -15 }}
+                                whileHover={{
+                                  scale: 1.04,
+                                  y: -4,
+                                  boxShadow:
+                                    "0 20px 25px -5px rgba(0,0,0,0.5), 0 10px 10px -5px rgba(0,0,0,0.5)",
+                                }}
+                                whileTap={{ scale: 0.96 }}
+                                transition={{
+                                  type: "spring",
+                                  stiffness: 350,
+                                  damping: 20,
+                                }}
+                                className="bg-[#181818] p-4 rounded-md cursor-pointer hover:bg-[#282828] transition-all duration-300 flex flex-col items-center text-center shadow-lg group"
+                                onClick={() => openArtistPage(artist.name)}
+                              >
+                                <div className="relative aspect-square w-full max-w-[140px] mb-4 shadow-[0_8px_24px_rgba(0,0,0,0.5)] overflow-hidden rounded-full flex-shrink-0">
+                                  <img
+                                    src={artist.coverUrl}
+                                    className="object-cover w-full h-full bg-[#333] group-hover:scale-105 transition-transform duration-500 animate-fade-in"
+                                    alt={artist.name}
+                                  />
+                                </div>
+                                <div className="flex flex-col items-center">
+                                  <h3 className="font-bold text-white text-[15px] truncate max-w-full pb-1 hover:underline">
+                                    {artist.name}
+                                  </h3>
+                                  <span className="text-xs text-[#b3b3b3]">Artist</span>
+                                </div>
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
                         </div>
-                        <div className="flex flex-col flex-1 h-full">
-                          <h3 className="font-bold text-white text-[15px] truncate max-w-full pb-1">
-                            {item.title}
-                          </h3>
-                          <ClickableArtists
-                            artist={item.artist}
-                            onArtistClick={openArtistPage}
-                            className="text-sm text-[#b3b3b3] truncate max-w-full block"
-                          />
+                      </div>
+                    )}
+
+                    {/* Albums Section */}
+                    {searchAlbums.length > 0 && (
+                      <div>
+                        <h3 className="text-xl font-bold text-white mb-6 tracking-tight flex items-center gap-2">
+                          <Disc className="w-5 h-5 text-[#8b5cf6]" /> Albums
+                        </h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
+                          <AnimatePresence mode="popLayout">
+                            {searchAlbums.map((album, i) => (
+                              <motion.div
+                                key={`album-search-${album.id}-${i}`}
+                                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: -15 }}
+                                whileHover={{
+                                  scale: 1.04,
+                                  y: -4,
+                                  boxShadow:
+                                    "0 20px 25px -5px rgba(0,0,0,0.5), 0 10px 10px -5px rgba(0,0,0,0.5)",
+                                }}
+                                whileTap={{ scale: 0.96 }}
+                                transition={{
+                                  type: "spring",
+                                  stiffness: 350,
+                                  damping: 20,
+                                }}
+                                className="bg-[#181818] p-4 rounded-md cursor-pointer hover:bg-[#282828] transition-all duration-300 flex flex-col shadow-lg group"
+                                onClick={() => setSearchQuery(album.name)}
+                              >
+                                <div className="relative aspect-square w-full mb-4 shadow-[0_8px_24px_rgba(0,0,0,0.5)] overflow-hidden rounded flex-shrink-0">
+                                  <img
+                                    src={album.coverUrl}
+                                    className="object-cover w-full h-full bg-[#333]"
+                                    alt={album.name}
+                                  />
+                                </div>
+                                <div className="flex flex-col flex-1 h-full">
+                                  <h3 className="font-bold text-white text-[15px] truncate max-w-full pb-1 hover:underline">
+                                    {album.name}
+                                  </h3>
+                                  <span className="text-xs text-[#b3b3b3] truncate max-w-full">
+                                    {album.artist}
+                                  </span>
+                                </div>
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
                         </div>
-                      </motion.div>
-                    ))}
-                    </AnimatePresence>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="pb-20">
@@ -4431,7 +4635,7 @@ export default function MelodyStreamDashboard({
                 <h2 className="text-2xl font-bold text-white mb-6">Popular</h2>
 
                 {isFetchingArtist ? (
-                  <div className="text-[#b3b3b3]">Loading top tracks...</div>
+                  <SkeletonLoader type="track-row" count={5} />
                 ) : (
                   <div className="flex flex-col gap-2">
                     {artistTopTracks.map((item, i) => (
@@ -5196,19 +5400,19 @@ export default function MelodyStreamDashboard({
         </div>
 
         <div className="flex justify-end items-center w-[30%] min-w-[180px] gap-3 relative">
-          <Volume2 className="w-5 h-5 text-[#b3b3b3]" />
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={volume}
-            onChange={handleVolume}
-            onMouseEnter={() => setIsVolumeHovered(true)}
-            onMouseLeave={() => setIsVolumeHovered(false)}
-            className="melodystream-range w-24"
-            style={{
-              background: `linear-gradient(to right, ${isVolumeHovered ? "#8b5cf6" : "#fff"} ${volume * 100}%, #4d4d4d ${volume * 100}%)`,
+          <VolumeSlider
+            volume={volume}
+            onVolumeChange={(newVol) => {
+              setVolume(newVol);
+              if (
+                isYTMode &&
+                ytPlayerRef.current &&
+                typeof ytPlayerRef.current.setVolume === "function"
+              ) {
+                ytPlayerRef.current.setVolume(newVol * 100);
+              } else if (audioRef.current) {
+                audioRef.current.volume = newVol;
+              }
             }}
           />
           <button
@@ -5314,42 +5518,38 @@ export default function MelodyStreamDashboard({
 
       {/* Mobile Bottom Navigation Bar */}
       <div
-        className={`fixed bottom-0 left-0 right-0 bg-black/95 border-t border-[#282828]/60 backdrop-blur-md h-[calc(64px+env(safe-area-inset-bottom,0px))] flex justify-between items-center px-6 pb-[calc(env(safe-area-inset-bottom,0px)+8px)] pt-3 z-40 ${isMobileView ? "flex" : "hidden"}`}
+        className={`fixed bottom-0 left-0 right-0 bg-black/95 border-t border-[#282828]/60 backdrop-blur-md h-[calc(64px+env(safe-area-inset-bottom,0px))] flex justify-around items-center px-2 pb-[calc(env(safe-area-inset-bottom,0px)+8px)] pt-3 z-40 ${isMobileView ? "flex" : "hidden"}`}
       >
-        <button
-          onClick={() => navigateTo("home")}
-          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === "home" ? "text-white" : "text-[#b3b3b3] hover:text-white"}`}
-        >
-          <Home
-            className={`w-6 h-6 ${activeTab === "home" ? "fill-current" : ""}`}
-          />
-          <span className="text-[10px] mt-1">Home</span>
-        </button>
-        <button
-          onClick={() => navigateTo("search")}
-          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === "search" ? "text-white" : "text-[#b3b3b3] hover:text-white"}`}
-        >
-          <Search className="w-6 h-6" />
-          <span className="text-[10px] mt-1">Search</span>
-        </button>
-        <button
-          onClick={() => navigateTo("library")}
-          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === "library" || activeTab === "playlist" ? "text-white" : "text-[#b3b3b3] hover:text-white"}`}
-        >
-          <Library
-            className={`w-6 h-6 ${activeTab === "library" || activeTab === "playlist" ? "fill-current" : ""}`}
-          />
-          <span className="text-[10px] mt-1">Your Library</span>
-        </button>
-        <button
-          onClick={() => navigateTo("premium")}
-          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === "premium" ? "text-white" : "text-[#b3b3b3] hover:text-white"}`}
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM12 11h2v-2h-3v2h1v2zM10.5 8h3v1h-3z" />
-          </svg>
-          <span className="text-[10px] mt-1">Premium</span>
-        </button>
+        {[
+          { id: "home", label: "Home", icon: Home },
+          { id: "search", label: "Search", icon: Search },
+          { id: "library", label: "Library", icon: Library, activeCheck: (tab: string) => tab === "library" || tab === "playlist" || tab === "liked" },
+          { id: "stats", label: "Stats", icon: BarChart3 },
+          { id: "downloads", label: "Downloads", icon: Download },
+          { id: "premium", label: "Premium", icon: BadgeCheck }
+        ].map((item) => {
+          const isActive = item.activeCheck ? item.activeCheck(activeTab) : activeTab === item.id;
+          const Icon = item.icon;
+          return (
+            <button
+              key={`mobile-tab-${item.id}`}
+              onClick={() => navigateTo(item.id as any)}
+              className={`flex flex-col items-center gap-1 flex-1 py-1 transition-all relative ${isActive ? "text-[#c084fc] font-semibold scale-105" : "text-[#b3b3b3] hover:text-white"}`}
+            >
+              <div className="relative p-1">
+                {isActive && (
+                  <motion.div
+                    layoutId="activeMobileTabGlow"
+                    className="absolute -inset-1 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-full blur-sm -z-10"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <Icon className={`w-5 h-5 ${isActive ? "fill-current/10" : ""}`} />
+              </div>
+              <span className="text-[9px] sm:text-[10px] tracking-tight">{item.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Fullscreen Player Overlay Sheet */}
