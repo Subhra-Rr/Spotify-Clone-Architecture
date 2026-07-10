@@ -6,8 +6,8 @@ interface SkeletonLoaderProps {
 }
 
 export function SkeletonLoader({ type, count = 1 }: SkeletonLoaderProps) {
-  const renderTrackRow = () => (
-    <div className="flex items-center justify-between p-3 rounded-lg bg-[#181818]/40 border border-white/[0.02] animate-pulse mb-2">
+  const renderTrackRow = (key?: any) => (
+    <div key={key} className="flex items-center justify-between p-3 rounded-lg bg-[#181818]/40 border border-white/[0.02] animate-pulse mb-2">
       <div className="flex items-center gap-4 flex-1">
         <div className="w-4 h-4 bg-white/10 rounded" />
         <div className="w-10 h-10 bg-white/10 rounded-md" />
@@ -57,7 +57,7 @@ export function SkeletonLoader({ type, count = 1 }: SkeletonLoaderProps) {
       {/* Track Section Skeletons */}
       <div className="space-y-3">
         <div className="h-6 bg-white/15 rounded w-1/5 animate-pulse" />
-        {Array.from({ length: 3 }).map((_, i) => renderTrackRow())}
+        {Array.from({ length: 3 }).map((_, i) => renderTrackRow(i))}
       </div>
     </div>
   );
@@ -88,7 +88,7 @@ export function SkeletonLoader({ type, count = 1 }: SkeletonLoaderProps) {
 
   switch (type) {
     case "track-row":
-      return <div className="space-y-1">{Array.from({ length: count }).map(() => renderTrackRow())}</div>;
+      return <div className="space-y-1">{Array.from({ length: count }).map((_, i) => renderTrackRow(i))}</div>;
     case "card-grid":
       return renderCardGrid();
     case "dashboard":
