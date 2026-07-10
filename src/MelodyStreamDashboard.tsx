@@ -872,6 +872,34 @@ export default function MelodyStreamDashboard({
   };
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
+
+  const initWebAudio = () => {
+    if (!audioRef.current || analyserRef.current) return;
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AudioContextClass();
+      const visualizerAnalyser = ctx.createAnalyser();
+      visualizerAnalyser.fftSize = 256;
+      visualizerAnalyser.smoothingTimeConstant = 0.8;
+
+      const source = ctx.createMediaElementSource(audioRef.current);
+      source.connect(visualizerAnalyser);
+      visualizerAnalyser.connect(ctx.destination);
+
+      analyserRef.current = visualizerAnalyser;
+      audioContextRef.current = ctx;
+      sourceNodeRef.current = source;
+      setAnalyser(visualizerAnalyser);
+      console.log("Web Audio Analyser initialized successfully!");
+    } catch (err) {
+      console.warn("Could not initialize Web Audio Analyser node:", err);
+    }
+  };
+
   const mainContentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -5462,6 +5490,8 @@ export default function MelodyStreamDashboard({
                 trackId={currentTrackId || "default"}
                 progress={progress}
                 duration={duration}
+                analyser={analyser}
+                isPlaying={isPlaying}
                 onSeek={(newTime) => {
                   if (audioRef.current) {
                     audioRef.current.currentTime = newTime;
@@ -5998,10 +6028,15 @@ export default function MelodyStreamDashboard({
 
       <audio
         ref={audioRef}
+        crossOrigin="anonymous"
         onTimeUpdate={() => setProgress(audioRef.current?.currentTime || 0)}
         onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
         onPlay={() => {
           consecutiveErrorsRef.current = 0;
+          initWebAudio();
+          if (audioContextRef.current && audioContextRef.current.state === "suspended") {
+            audioContextRef.current.resume().catch(() => {});
+          }
         }}
         onEnded={() => handleNext(true)}
         onVolumeChange={() => setVolume(audioRef.current?.volume || 1)}
