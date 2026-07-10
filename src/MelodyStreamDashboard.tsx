@@ -37,6 +37,7 @@ import {
   Music,
   Users,
   Disc,
+  Sparkles,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import YouTube from "react-youtube";
@@ -77,6 +78,7 @@ import { LocalisationSelector, LanguageCode, TRANSLATIONS } from "./components/L
 import { CastingSimulator } from "./components/CastingSimulator";
 import { DataManagement } from "./components/DataManagement";
 import { AdminPanel } from "./components/AdminPanel";
+import { QuantumSpace } from "./components/QuantumSpace";
 
 import { BarChart3 } from "lucide-react";
 
@@ -153,7 +155,7 @@ const getProfileImage = (user: User | null) => {
   return null;
 };
 
-interface Track {
+export interface Track {
   id: string;
   title: string;
   artist: string;
@@ -719,6 +721,7 @@ export default function MelodyStreamDashboard({
     | "library"
     | "stats"
     | "downloads"
+    | "quantum"
   >("home");
 
   // Premium State Extensions
@@ -2602,6 +2605,59 @@ export default function MelodyStreamDashboard({
     }
   };
 
+  const handleCreateAIPlaylist = async (name: string, description?: string, tracksToInclude?: Track[]) => {
+    const targetId = Math.random().toString(36).substr(2, 9);
+    const resolvedUser = firebaseUser || { uid: "guest_user", displayName: "Guest" };
+    
+    // Map tracks to custom playlist format
+    const formattedTracksItems = (tracksToInclude || []).map((t, idx) => ({
+      added_at: new Date().toISOString(),
+      added_by: { id: resolvedUser.uid },
+      track: t
+    }));
+
+    const newPlaylist: any = {
+      id: targetId,
+      name: name,
+      images: tracksToInclude && tracksToInclude[0] ? [{ url: tracksToInclude[0].coverUrl }] : [],
+      owner: { display_name: resolvedUser.displayName || "You" },
+      tracks: { total: formattedTracksItems.length, items: formattedTracksItems },
+    };
+
+    setPlaylists((prev) => {
+      const updated = [newPlaylist, ...prev];
+      if (resolvedUser.uid === "guest_user") {
+        localStorage.setItem(
+          "spotify-clone-guest-playlists",
+          JSON.stringify(updated.filter((p) => p.id !== "liked")),
+        );
+      }
+      return updated;
+    });
+
+    if (resolvedUser.uid !== "guest_user" && firebaseUser) {
+      try {
+        const docRef = doc(db, "users", firebaseUser.uid, "playlists", targetId);
+        await setDoc(docRef, {
+          name: name,
+          description: description || "",
+          tracks: (tracksToInclude || []).map(t => ({
+            id: t.id,
+            title: t.title,
+            artist: t.artist,
+            album: t.album || "",
+            duration: t.duration,
+            audioUrl: t.audioUrl,
+            coverUrl: t.coverUrl,
+            uri: t.uri || ""
+          })),
+        });
+      } catch (e) {
+        console.error("error creating AI playlist", e);
+      }
+    }
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     // Cut file uploading logic to resolve uploads errors and storage limitations
   };
@@ -2811,6 +2867,16 @@ export default function MelodyStreamDashboard({
               className={`flex items-center gap-4 transition-colors font-bold text-[15px] ${activeTab === "downloads" ? "text-white" : "text-[#b3b3b3] hover:text-white"}`}
             >
               <Download className="w-6 h-6" /> Offline Downloads
+            </button>
+            <button
+              onClick={() => navigateTo("quantum")}
+              className={`flex items-center gap-4 transition-all duration-300 font-bold text-[15px] ${
+                activeTab === "quantum"
+                  ? "text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-emerald-400 shadow-[0_0_15px_rgba(139,92,246,0.15)]"
+                  : "text-[#b3b3b3] hover:text-white"
+              }`}
+            >
+              <Sparkles className="w-6 h-6 text-violet-400 animate-pulse" /> Quantum Space
             </button>
           </div>
 
@@ -5361,6 +5427,46 @@ export default function MelodyStreamDashboard({
                     ))}
                   </div>
                 )}
+              </motion.div>
+            )}
+
+            {activeTab === "quantum" && (
+              <motion.div
+                key="tab-quantum"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.35, type: "spring", damping: 25, stiffness: 350 }}
+                className="mt-8"
+              >
+                <QuantumSpace
+                  currentTrack={currentTrack}
+                  isPlaying={isPlaying}
+                  audioRef={audioRef}
+                  analyser={analyser}
+                  onPlayPause={togglePlayPause}
+                  onNext={() => handleNext(true)}
+                  onPrev={handlePrev}
+                  onSeek={(newTime) => {
+                    if (audioRef.current) {
+                      audioRef.current.currentTime = newTime;
+                    }
+                  }}
+                  onVolumeChange={(v) => {
+                    setVolume(v);
+                    if (audioRef.current) {
+                      audioRef.current.volume = v;
+                    }
+                  }}
+                  progress={progress}
+                  duration={duration}
+                  volume={volume}
+                  playTrack={(trackId) => {
+                    playMusic(trackId);
+                  }}
+                  customPlaylists={playlists}
+                  onCreatePlaylist={handleCreateAIPlaylist}
+                />
               </motion.div>
             )}
             </AnimatePresence>
