@@ -49,14 +49,12 @@ export const AdminPanel: React.FC<{
   onClose: () => void;
   featureFlags: {
     gapless: boolean;
-    normalization: boolean;
     aiDJ: boolean;
     hdAudio: boolean;
   };
   setFeatureFlags: React.Dispatch<
     React.SetStateAction<{
       gapless: boolean;
-      normalization: boolean;
       aiDJ: boolean;
       hdAudio: boolean;
     }>
@@ -488,27 +486,6 @@ export const AdminPanel: React.FC<{
                       }`}
                     >
                       {featureFlags.gapless ? "Enabled" : "Disabled"}
-                    </button>
-                  </div>
-
-                  <div className="flex items-center justify-between py-3">
-                    <div>
-                      <h4 className="font-bold text-gray-200">AGC Loudness Normalization</h4>
-                      <p className="text-[10px] text-gray-500">
-                        Automatically normalizes track decibels to avoid sudden loudness shocks.
-                      </p>
-                    </div>
-                    <button
-                      onClick={() =>
-                        setFeatureFlags((f) => ({ ...f, normalization: !f.normalization }))
-                      }
-                      className={`px-3 py-1 text-[10px] font-bold rounded-lg uppercase tracking-wider transition ${
-                        featureFlags.normalization
-                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                          : "bg-gray-800 text-gray-400 border border-gray-700"
-                      }`}
-                    >
-                      {featureFlags.normalization ? "Enabled" : "Disabled"}
                     </button>
                   </div>
 

@@ -759,13 +759,11 @@ export default function MelodyStreamDashboard({
   // MelodyStream Premium - Final Layer State Variables
   const [featureFlags, setFeatureFlags] = useState({
     gapless: true,
-    normalization: true,
     aiDJ: false,
     hdAudio: false,
   });
   const [currentLanguage, setCurrentLanguage] = useState<LanguageCode>("en");
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const [playbackSpeed, setPlaybackSpeed] = useState(() => Number(localStorage.getItem("playbackSpeed") || "1"));
   const [dominantColor, setDominantColor] = useState("rgba(139, 92, 246, 0.15)");
   const [activeCastingDevice, setActiveCastingDevice] = useState<string | null>(null);
   const [activeCastingDeviceName, setActiveCastingDeviceName] = useState<string | null>(null);
@@ -1771,21 +1769,12 @@ export default function MelodyStreamDashboard({
     }
   }, [currentTrack]);
 
-  // Handle Playback Rate Control
+  // Handle Volume
   useEffect(() => {
     if (audioRef.current) {
-      audioRef.current.playbackRate = playbackSpeed;
+      audioRef.current.volume = volume;
     }
-  }, [playbackSpeed, currentTrack, isPlaying]);
-
-  // Handle Volume Normalization Adjustment
-  useEffect(() => {
-    if (audioRef.current) {
-      const isNorm = featureFlags.normalization;
-      const finalVolume = isNorm ? volume * 0.82 : volume;
-      audioRef.current.volume = finalVolume;
-    }
-  }, [volume, featureFlags.normalization, currentTrack]);
+  }, [volume, currentTrack]);
 
   // Gapless Preloading side-effect
   useEffect(() => {
@@ -2707,12 +2696,6 @@ export default function MelodyStreamDashboard({
       if (e.code === "Space") {
         e.preventDefault();
         togglePlayPauseRef.current();
-      } else if (e.code === "ArrowRight") {
-        e.preventDefault();
-        handleNextRef.current(false);
-      } else if (e.code === "ArrowLeft") {
-        e.preventDefault();
-        handlePrevRef.current();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -5831,48 +5814,6 @@ export default function MelodyStreamDashboard({
               }
             }}
           />
-          {/* Playback Speed Selector Option */}
-          <div className="relative group/speed flex items-center shrink-0">
-            <button
-              className="text-[#b3b3b3] hover:text-white transition-colors text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 border border-white/5 font-black"
-              title="Change Playback Speed"
-            >
-              {playbackSpeed}x
-            </button>
-            <div className="absolute bottom-full right-0 mb-2 hidden group-hover/speed:block bg-black/95 border border-white/10 rounded-xl p-1.5 shadow-2xl z-50 min-w-[75px] space-y-1">
-              {[0.5, 1.0, 1.25, 1.5, 2.0].map((rate) => (
-                <button
-                  key={rate}
-                  onClick={() => {
-                    setPlaybackSpeed(rate);
-                    localStorage.setItem("playbackSpeed", String(rate));
-                  }}
-                  className={`w-full text-left px-2.5 py-1 rounded-lg text-[10px] font-bold block transition-colors ${playbackSpeed === rate ? "bg-[#8b5cf6] text-white" : "text-[#b3b3b3] hover:bg-white/10 hover:text-white"}`}
-                >
-                  {rate}x
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Volume Normalization (ReplayGain) Toggle */}
-          <button
-            onClick={() => {
-              setFeatureFlags((prev) => {
-                const nextVal = !prev.normalization;
-                return { ...prev, normalization: nextVal };
-              });
-              showToast(
-                `Volume Normalization: ${!featureFlags.normalization ? "ON (Consistent Level)" : "OFF"}`,
-                "info"
-              );
-            }}
-            className={`transition-colors p-1 rounded-full shrink-0 ${featureFlags.normalization ? "text-amber-400" : "text-[#b3b3b3] hover:text-white"}`}
-            title="Volume Normalization (ReplayGain)"
-          >
-            <Sparkles className="w-4 h-4" />
-          </button>
-
           <button
             onClick={() => navigateTo("queue")}
             className={`transition-colors p-1 rounded-full ${activeTab === "queue" ? "text-[#8b5cf6]" : "text-[#b3b3b3] hover:text-white"}`}
