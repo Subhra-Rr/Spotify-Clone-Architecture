@@ -179,7 +179,7 @@ export function CommandPalette({
                 <div className="py-12 text-center text-gray-400 flex flex-col items-center gap-2">
                   <ShieldAlert className="w-8 h-8 text-gray-500" />
                   <span className="text-sm font-bold">No results found for "{query}"</span>
-                  <span className="text-xs text-gray-500">Try searching for simple commands like 'play' or tab names like 'stats'</span>
+                  <span className="text-xs text-gray-500">Try searching for simple commands like 'play' or tab names like 'library'</span>
                 </div>
               ) : (
                 <div className="space-y-3 pb-2">

@@ -79,7 +79,6 @@ import { CastingSimulator } from "./components/CastingSimulator";
 import { DataManagement } from "./components/DataManagement";
 import { AdminPanel } from "./components/AdminPanel";
 
-import { BarChart3 } from "lucide-react";
 
 // MelodyStream Premium Feature Extensions
 import { KeyboardShortcuts } from "./components/KeyboardShortcuts";
@@ -5850,7 +5849,6 @@ export default function MelodyStreamDashboard({
           { id: "home", label: "Home", icon: Home },
           { id: "search", label: "Search", icon: Search },
           { id: "library", label: "Library", icon: Library, activeCheck: (tab: string) => tab === "library" || tab === "playlist" || tab === "liked" },
-          { id: "stats", label: "Stats", icon: BarChart3 },
           { id: "downloads", label: "Downloads", icon: Download },
           { id: "premium", label: "Premium", icon: BadgeCheck }
         ].map((item) => {
