@@ -288,6 +288,15 @@ function MainLayout() {
   const handleLogout = () => {
     localStorage.removeItem('melodystream_local_logged_in_user');
     localStorage.removeItem('melodystream_guest_session');
+    
+    // Reset theme custom properties to default on logout
+    document.documentElement.style.setProperty("--color-accent", "#8b5cf6");
+    document.documentElement.style.setProperty("--color-accent-hover", "#7c3aed");
+    document.documentElement.style.setProperty("--color-accent-rgb", "139, 92, 246");
+    document.documentElement.style.setProperty("--theme-bg-from", "#000000");
+    document.documentElement.style.setProperty("--theme-bg-to", "#000000");
+    document.documentElement.style.setProperty("--theme-glass", "true");
+    
     signOut(auth).catch(() => {});
     setFirebaseUser(null);
   };

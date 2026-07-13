@@ -78,7 +78,6 @@ import { LocalisationSelector, LanguageCode, TRANSLATIONS } from "./components/L
 import { CastingSimulator } from "./components/CastingSimulator";
 import { DataManagement } from "./components/DataManagement";
 import { AdminPanel } from "./components/AdminPanel";
-import { QuantumSpace } from "./components/QuantumSpace";
 
 import { BarChart3 } from "lucide-react";
 
@@ -88,7 +87,6 @@ import { ThemeCustomizer } from "./components/ThemeCustomizer";
 import { TopLoadingBar, startLoadingBar, stopLoadingBar } from "./components/TopLoadingBar";
 import { SkeletonLoader } from "./components/SkeletonLoader";
 import { VolumeSlider } from "./components/VolumeSlider";
-import { ListeningStats, recordPlayInHistory } from "./components/ListeningStats";
 import { getOfflineTracks, saveOfflineTrack, deleteOfflineTrack, isTrackDownloaded } from "./utils/offlineDB";
 import { CommandPalette } from "./components/CommandPalette";
 
@@ -720,9 +718,7 @@ export default function MelodyStreamDashboard({
     | "premium"
     | "profile"
     | "library"
-    | "stats"
     | "downloads"
-    | "quantum"
   >("home");
 
   // Premium State Extensions
@@ -1001,9 +997,11 @@ export default function MelodyStreamDashboard({
   // Initial Theme and Dynamic Styles loader
   useEffect(() => {
     try {
-      const accent = localStorage.getItem("theme-accent") || "#8b5cf6";
-      const bg = localStorage.getItem("theme-bg") || "black";
-      const glass = localStorage.getItem("theme-glass") !== "false";
+      const isRealUser = user?.uid && user.uid !== "guest_user";
+      const uid = isRealUser ? user.uid : "guest";
+      const accent = localStorage.getItem(`theme-accent:${uid}`) || "#8b5cf6";
+      const bg = localStorage.getItem(`theme-bg:${uid}`) || "black";
+      const glass = localStorage.getItem(`theme-glass:${uid}`) !== "false";
       
       document.documentElement.style.setProperty("--color-accent", accent);
       document.documentElement.style.setProperty("--theme-glass", String(glass));
@@ -1020,8 +1018,21 @@ export default function MelodyStreamDashboard({
       if (foundColor) {
         document.documentElement.style.setProperty("--color-accent-hover", foundColor.hover);
       }
+
+      const BACKGROUNDS = [
+        { name: "Midnight Black", from: "#000000", to: "#000000", key: "black" },
+        { name: "Amethyst Dusk", from: "#1e1333", to: "#05030a", key: "amethyst" },
+        { name: "Nordic Frost", from: "#0f172a", to: "#020617", key: "frost" },
+        { name: "Crimson Velvet", from: "#2b0d18", to: "#070206", key: "crimson" },
+        { name: "Emerald Glade", from: "#062419", to: "#020805", key: "glade" },
+      ];
+      const foundBg = BACKGROUNDS.find(b => b.key === bg);
+      if (foundBg) {
+        document.documentElement.style.setProperty("--theme-bg-from", foundBg.from);
+        document.documentElement.style.setProperty("--theme-bg-to", foundBg.to);
+      }
     } catch (e) {}
-  }, []);
+  }, [user]);
 
   // Sync Offline Tracks from IndexedDB on boot & tab load
   const syncOfflineTracks = async () => {
@@ -1760,13 +1771,6 @@ export default function MelodyStreamDashboard({
     };
 
     extractColor();
-  }, [currentTrack]);
-
-  // Record playback history when current track changes
-  useEffect(() => {
-    if (currentTrack) {
-      recordPlayInHistory(currentTrack);
-    }
   }, [currentTrack]);
 
   // Handle Volume
@@ -2603,7 +2607,6 @@ export default function MelodyStreamDashboard({
         p.then(() => {
           if (playRequestIdRef.current === playRequestId) {
             setIsPlaying(true);
-            recordPlayInHistory(trackTarget);
           }
         }).catch((err: any) => {
           if (err.name !== "AbortError") {
@@ -2612,7 +2615,6 @@ export default function MelodyStreamDashboard({
         });
       } else {
         setIsPlaying(true);
-        recordPlayInHistory(trackTarget);
       }
     } catch (err: any) {
       if (err.name !== "AbortError") {
@@ -3045,26 +3047,10 @@ export default function MelodyStreamDashboard({
               <Search className="w-6 h-6" /> {TRANSLATIONS[currentLanguage]?.search || "Search"}
             </button>
             <button
-              onClick={() => navigateTo("stats")}
-              className={`flex items-center gap-4 transition-colors font-bold text-[15px] ${activeTab === "stats" ? "text-white" : "text-[#b3b3b3] hover:text-white"}`}
-            >
-              <BarChart3 className="w-6 h-6" /> Listening Stats
-            </button>
-            <button
               onClick={() => navigateTo("downloads")}
               className={`flex items-center gap-4 transition-colors font-bold text-[15px] ${activeTab === "downloads" ? "text-white" : "text-[#b3b3b3] hover:text-white"}`}
             >
               <Download className="w-6 h-6" /> Offline Downloads
-            </button>
-            <button
-              onClick={() => navigateTo("quantum")}
-              className={`flex items-center gap-4 transition-all duration-300 font-bold text-[15px] ${
-                activeTab === "quantum"
-                  ? "text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-emerald-400 shadow-[0_0_15px_rgba(139,92,246,0.15)]"
-                  : "text-[#b3b3b3] hover:text-white"
-              }`}
-            >
-              <Sparkles className="w-6 h-6 text-violet-400 animate-pulse" /> Quantum Space
             </button>
           </div>
 
@@ -5514,25 +5500,6 @@ export default function MelodyStreamDashboard({
               </motion.div>
             )}
 
-            {activeTab === "stats" && (
-              <motion.div
-                key="tab-stats"
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -15 }}
-                transition={{ duration: 0.25 }}
-                className="mt-8"
-              >
-                <ListeningStats
-                  onPlayTrack={(track) => {
-                    setQueue([track]);
-                    setCurrentTrackIndex(0);
-                    playMusic(0, [track]);
-                  }}
-                />
-              </motion.div>
-            )}
-
             {activeTab === "downloads" && (
               <motion.div
                 key="tab-downloads"
@@ -5615,46 +5582,6 @@ export default function MelodyStreamDashboard({
                     ))}
                   </div>
                 )}
-              </motion.div>
-            )}
-
-            {activeTab === "quantum" && (
-              <motion.div
-                key="tab-quantum"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.35, type: "spring", damping: 25, stiffness: 350 }}
-                className="mt-8"
-              >
-                <QuantumSpace
-                  currentTrack={currentTrack}
-                  isPlaying={isPlaying}
-                  audioRef={audioRef}
-                  analyser={analyser}
-                  onPlayPause={togglePlayPause}
-                  onNext={() => handleNext(true)}
-                  onPrev={handlePrev}
-                  onSeek={(newTime) => {
-                    if (audioRef.current) {
-                      audioRef.current.currentTime = newTime;
-                    }
-                  }}
-                  onVolumeChange={(v) => {
-                    setVolume(v);
-                    if (audioRef.current) {
-                      audioRef.current.volume = v;
-                    }
-                  }}
-                  progress={progress}
-                  duration={duration}
-                  volume={volume}
-                  playTrack={(trackId) => {
-                    playMusic(trackId);
-                  }}
-                  customPlaylists={playlists}
-                  onCreatePlaylist={handleCreateAIPlaylist}
-                />
               </motion.div>
             )}
             </AnimatePresence>
@@ -7057,17 +6984,30 @@ export default function MelodyStreamDashboard({
                   onSleepTimerSet={(min) => setSleepTimer(min ? min * 60 : null)}
                   activeSleepTimer={sleepTimer}
                   showToast={showToast}
+                  userId={user?.uid}
                 />
               </div>
             </div>
 
             <div className="flex justify-end mt-8 pt-4 border-t border-[#282828]">
-              <button
-                onClick={() => setIsSettingsModalOpen(false)}
-                className="px-6 py-2 bg-[#a78bfa] text-black rounded-full font-bold hover:scale-105 transition-transform text-sm"
-              >
-                Save & Apply Settings
-              </button>
+              {user && user.uid !== "guest_user" ? (
+                <button
+                  onClick={() => {
+                    setIsSettingsModalOpen(false);
+                    showToast("Settings saved to your account!", "success");
+                  }}
+                  className="px-6 py-2 bg-[#a78bfa] text-black rounded-full font-bold hover:scale-105 transition-transform text-sm"
+                >
+                  Save & Apply Settings
+                </button>
+              ) : (
+                <button
+                  onClick={() => setIsSettingsModalOpen(false)}
+                  className="px-6 py-2 bg-[#333333] text-white border border-white/10 rounded-full font-bold hover:scale-105 transition-transform text-sm"
+                >
+                  Close
+                </button>
+              )}
             </div>
           </div>
         </div>

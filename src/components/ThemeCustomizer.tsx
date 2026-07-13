@@ -5,6 +5,7 @@ interface ThemeCustomizerProps {
   onSleepTimerSet: (minutes: number | null) => void;
   activeSleepTimer: number | null; // remaining seconds
   showToast: (message: string, type: "info" | "error" | "success") => void;
+  userId?: string;
 }
 
 export const ACCENT_COLORS = [
@@ -24,10 +25,13 @@ export const BACKGROUNDS = [
   { name: "Emerald Glade", from: "#062419", to: "#020805", key: "glade" },
 ];
 
-export function ThemeCustomizer({ onSleepTimerSet, activeSleepTimer, showToast }: ThemeCustomizerProps) {
-  const [selectedAccent, setSelectedAccent] = useState(() => localStorage.getItem("theme-accent") || "#8b5cf6");
-  const [selectedBg, setSelectedBg] = useState(() => localStorage.getItem("theme-bg") || "black");
-  const [glassmorphism, setGlassmorphism] = useState(() => localStorage.getItem("theme-glass") !== "false");
+export function ThemeCustomizer({ onSleepTimerSet, activeSleepTimer, showToast, userId }: ThemeCustomizerProps) {
+  const isRealUser = userId && userId !== "guest_user";
+  const uid = isRealUser ? userId : "guest";
+
+  const [selectedAccent, setSelectedAccent] = useState(() => localStorage.getItem(`theme-accent:${uid}`) || "#8b5cf6");
+  const [selectedBg, setSelectedBg] = useState(() => localStorage.getItem(`theme-bg:${uid}`) || "black");
+  const [glassmorphism, setGlassmorphism] = useState(() => localStorage.getItem(`theme-glass:${uid}`) !== "false");
   const [customTimerMin, setCustomTimerMin] = useState("");
 
   useEffect(() => {
@@ -36,24 +40,30 @@ export function ThemeCustomizer({ onSleepTimerSet, activeSleepTimer, showToast }
     document.documentElement.style.setProperty("--color-accent", accent.hex);
     document.documentElement.style.setProperty("--color-accent-hover", accent.hover);
     document.documentElement.style.setProperty("--color-accent-rgb", hexToRgb(accent.hex));
-    localStorage.setItem("theme-accent", accent.hex);
-  }, [selectedAccent]);
+    if (isRealUser) {
+      localStorage.setItem(`theme-accent:${uid}`, accent.hex);
+    }
+  }, [selectedAccent, uid, isRealUser]);
 
   useEffect(() => {
     // Apply Background
     const bg = BACKGROUNDS.find(b => b.key === selectedBg) || BACKGROUNDS[0];
     document.documentElement.style.setProperty("--theme-bg-from", bg.from);
     document.documentElement.style.setProperty("--theme-bg-to", bg.to);
-    localStorage.setItem("theme-bg", selectedBg);
+    if (isRealUser) {
+      localStorage.setItem(`theme-bg:${uid}`, selectedBg);
+    }
     
     // Dispatch custom event to trigger dashboard background redraw
     window.dispatchEvent(new CustomEvent("theme-bg-changed", { detail: bg }));
-  }, [selectedBg]);
+  }, [selectedBg, uid, isRealUser]);
 
   useEffect(() => {
     document.documentElement.style.setProperty("--theme-glass", glassmorphism ? "true" : "false");
-    localStorage.setItem("theme-glass", String(glassmorphism));
-  }, [glassmorphism]);
+    if (isRealUser) {
+      localStorage.setItem(`theme-glass:${uid}`, String(glassmorphism));
+    }
+  }, [glassmorphism, uid, isRealUser]);
 
   const hexToRgb = (hex: string) => {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);

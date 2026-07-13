@@ -55,10 +55,8 @@ export function CommandPalette({
   const navigationCommands = [
     { id: "nav-home", label: "Go to Home Feed", type: "nav", tab: "home", icon: Navigation },
     { id: "nav-search", label: "Go to Search & Explore", type: "nav", tab: "search", icon: Search },
-    { id: "nav-stats", label: "Go to Wrapped Listening Stats", type: "nav", tab: "stats", icon: BarChart2 },
     { id: "nav-queue", label: "Go to Current Play Queue", type: "nav", tab: "queue", icon: Music },
     { id: "nav-downloads", label: "Go to Offline Downloads", type: "nav", tab: "downloads", icon: FolderDown },
-    { id: "nav-quantum", label: "Go to AI Quantum Space Chat", type: "nav", tab: "quantum-space", icon: Sparkles },
   ];
 
   const actionCommands = [
