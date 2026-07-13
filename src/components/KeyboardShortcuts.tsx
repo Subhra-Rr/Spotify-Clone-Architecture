@@ -59,11 +59,11 @@ export function KeyboardShortcuts({
           break;
         case "ArrowRight":
           e.preventDefault();
-          onSeekForward();
+          onNext();
           break;
         case "ArrowLeft":
           e.preventDefault();
-          onSeekBackward();
+          onPrev();
           break;
         case "ArrowUp":
           e.preventDefault();
@@ -129,8 +129,8 @@ export function KeyboardShortcuts({
   const shortcutsList = [
     { key: "Space", desc: "Play / Pause", icon: Play },
     { key: "Ctrl + K", desc: "Command Palette", icon: Keyboard },
-    { key: "Arrow Right", desc: "Skip Forward 10s", icon: FastForward },
-    { key: "Arrow Left", desc: "Skip Backward 10s", icon: Rewind },
+    { key: "Arrow Right", desc: "Next Track", icon: FastForward },
+    { key: "Arrow Left", desc: "Previous Track", icon: Rewind },
     { key: "Arrow Up", desc: "Volume Up 10%", icon: Volume2 },
     { key: "Arrow Down", desc: "Volume Down 10%", icon: Volume2 },
     { key: "N", desc: "Next Track", icon: FastForward },

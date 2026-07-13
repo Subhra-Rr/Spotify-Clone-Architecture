@@ -2990,12 +2990,14 @@ export default function MelodyStreamDashboard({
         onNext={() => handleNext(false)}
         onPrev={handlePrev}
         onSeekForward={() => {
-          const nextVal = Math.min((audioRef.current?.currentTime || 0) + 10, duration);
+          const currentT = audioRef.current?.currentTime || 0;
+          const maxT = Math.max(0, duration - 1.5);
+          const nextVal = Math.min(currentT + 5, maxT);
           if (audioRef.current) audioRef.current.currentTime = nextVal;
           setProgress(nextVal);
         }}
         onSeekBackward={() => {
-          const prevVal = Math.max((audioRef.current?.currentTime || 0) - 10, 0);
+          const prevVal = Math.max((audioRef.current?.currentTime || 0) - 5, 0);
           if (audioRef.current) audioRef.current.currentTime = prevVal;
           setProgress(prevVal);
         }}
